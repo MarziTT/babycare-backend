@@ -14,13 +14,13 @@ class Config:
     WX_SECRET = os.environ.get("WX_SECRET", "")
 
     # AI 服务（混元 / DeepSeek）
-    AI_API_KEY = os.environ.get("AI_API_KEY", "sk-iQ95N7rriRYBYBBrnCDwDCL0VHTzwb4IixblKROuRGaI31VW")
-    AI_API_BASE = os.environ.get("AI_API_BASE", "https://api.deepseek.com/v1")
-    AI_MODEL = os.environ.get("AI_MODEL", "deepseek-chat")
+    AI_API_KEY = os.environ.get("AI_API_KEY") or "sk-iQ95N7rriRYBYBBrnCDwDCL0VHTzwb4IixblKROuRGaI31VW"
+    AI_API_BASE = os.environ.get("AI_API_BASE") or "https://api.deepseek.com/v1"
+    AI_MODEL = os.environ.get("AI_MODEL") or "deepseek-chat"
 
     # ASR 语音识别
-    ASR_API_KEY = os.environ.get("ASR_API_KEY", "")
-    ASR_PROVIDER = os.environ.get("ASR_PROVIDER", "tencent")  # tencent / iflytek
+    ASR_API_KEY = os.environ.get("ASR_API_KEY") or "tencent-asr-demo"
+    ASR_PROVIDER = os.environ.get("ASR_PROVIDER") or "tencent"  # tencent / iflytek
 
     # 缓存
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
