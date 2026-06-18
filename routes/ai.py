@@ -1,6 +1,9 @@
 """AI 相关 API - 语音解析、智能问答"""
+import logging
 from flask import Blueprint, request, jsonify
 from services.ai_service import parse_voice_input, chat_with_parent, transcribe_audio
+
+logger = logging.getLogger(__name__)
 
 ai_bp = Blueprint("ai", __name__)
 
