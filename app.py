@@ -1,4 +1,4 @@
-"""BabyCare 育儿助手 - Flask 主入口"""
+"""BabyCare 育儿助手 - Flask 主入口 (v1.1)"""
 import logging
 from flask import Flask, jsonify
 from config import Config
