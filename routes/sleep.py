@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import uuid
+from database import get_db
 
 sleep_bp = Blueprint("sleep", __name__)
 
@@ -11,7 +12,21 @@ def list_sleep():
     baby_id = request.args.get("baby_id", "")
     date = request.args.get("date", "")
     limit = int(request.args.get("limit", 50))
-    return jsonify({"code": 0, "data": [], "message": "ok"})
+
+    db = get_db()
+    if date:
+        rows = db.execute(
+            "SELECT * FROM sleep WHERE baby_id=? AND date(start_time)=? ORDER BY start_time DESC LIMIT ?",
+            (baby_id, date, limit)
+        ).fetchall()
+    else:
+        rows = db.execute(
+            "SELECT * FROM sleep WHERE baby_id=? ORDER BY start_time DESC LIMIT ?",
+            (baby_id, limit)
+        ).fetchall()
+    records = [dict(r) for r in rows]
+    db.close()
+    return jsonify({"code": 0, "data": records, "message": "ok"})
 
 
 @sleep_bp.route("/api/sleep", methods=["POST"])
@@ -28,4 +43,23 @@ def create_sleep():
         "recorded_by": data.get("recorded_by", ""),
         "created_at": datetime.now().isoformat(),
     }
+
+    db = get_db()
+    db.execute(
+        "INSERT INTO sleep (id,baby_id,family_id,start_time,end_time,duration_minutes,note,recorded_by,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        (record["id"], record["baby_id"], record["family_id"], record["start_time"],
+         record["end_time"], record["duration_minutes"], record["note"],
+         record["recorded_by"], record["created_at"])
+    )
+    db.commit()
+    db.close()
     return jsonify({"code": 0, "data": record, "message": "记录成功"})
+
+
+@sleep_bp.route("/api/sleep/<record_id>", methods=["DELETE"])
+def delete_sleep(record_id):
+    db = get_db()
+    db.execute("DELETE FROM sleep WHERE id=?", (record_id,))
+    db.commit()
+    db.close()
+    return jsonify({"code": 0, "message": "已删除"})

@@ -11,6 +11,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # 初始化 SQLite 数据库
+    import database  # noqa: F401 - 模块加载时自动建表
+
     # 注册蓝图
     from routes.feeding import feeding_bp
     from routes.sleep import sleep_bp
