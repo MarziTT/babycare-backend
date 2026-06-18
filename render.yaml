@@ -7,3 +7,13 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
+      - key: AI_API_KEY
+        value: sk-iQ95N7rriRYBYBBrnCDwDCL0VHTzwb4IixblKROuRGaI31VW
+      - key: AI_API_BASE
+        value: https://api.deepseek.com/v1
+      - key: AI_MODEL
+        value: deepseek-chat
+      - key: ASR_API_KEY
+        value: tencent-asr-demo
+      - key: ASR_PROVIDER
+        value: tencent
