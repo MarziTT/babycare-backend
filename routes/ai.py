@@ -13,8 +13,12 @@ def voice_parse():
     if not user_text:
         return jsonify({"code": 400, "message": "请提供语音识别文本"}), 400
 
-    result = parse_voice_input(user_text)
-    return jsonify({"code": 0, "data": result, "message": "ok"})
+    try:
+        result = parse_voice_input(user_text)
+        return jsonify({"code": 0, "data": result, "message": "ok"})
+    except Exception as e:
+        logger.error(f"voice_parse failed: {e}")
+        return jsonify({"code": 500, "message": str(e)}), 500
 
 
 @ai_bp.route("/api/ai/voice-to-record", methods=["POST"])
@@ -49,5 +53,9 @@ def ai_chat():
     if not user_message:
         return jsonify({"code": 400, "message": "请输入问题"}), 400
 
-    reply = chat_with_parent(user_message, context_data)
-    return jsonify({"code": 0, "data": {"reply": reply}, "message": "ok"})
+    try:
+        reply = chat_with_parent(user_message, context_data)
+        return jsonify({"code": 0, "data": {"reply": reply}, "message": "ok"})
+    except Exception as e:
+        logger.error(f"ai_chat failed: {e}")
+        return jsonify({"code": 500, "message": str(e)}), 500
