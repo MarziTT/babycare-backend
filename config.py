@@ -14,9 +14,9 @@ class Config:
     WX_SECRET = os.environ.get("WX_SECRET", "")
 
     # AI 服务（混元 / DeepSeek）
-    AI_API_KEY = os.environ.get("AI_API_KEY") or "sk-iQ95N7rriRYBYBBrnCDwDCL0VHTzwb4IixblKROuRGaI31VW"
-    AI_API_BASE = os.environ.get("AI_API_BASE") or "https://api.deepseek.com/v1"
-    AI_MODEL = os.environ.get("AI_MODEL") or "deepseek-chat"
+    AI_API_KEY = os.environ.get("AI_API_KEY") or "sk-b7c6b08c17200b0af12840d7624a6c37a47d88b2415ae5adec6ded6725636671"
+    AI_API_BASE = os.environ.get("AI_API_BASE") or "https://ai.laodog.top/v1"
+    AI_MODEL = os.environ.get("AI_MODEL") or "gpt-5.4-mini"
 
     # ASR 语音识别
     ASR_API_KEY = os.environ.get("ASR_API_KEY") or "tencent-asr-demo"
