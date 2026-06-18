@@ -52,6 +52,50 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS growth (
+            id TEXT PRIMARY KEY,
+            baby_id TEXT NOT NULL,
+            family_id TEXT DEFAULT '',
+            record_date TEXT NOT NULL,
+            height_cm REAL,
+            weight_kg REAL,
+            head_circumference_cm REAL,
+            note TEXT DEFAULT '',
+            recorded_by TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vaccination (
+            id TEXT PRIMARY KEY,
+            baby_id TEXT NOT NULL,
+            family_id TEXT DEFAULT '',
+            vaccine_name TEXT NOT NULL,
+            scheduled_date TEXT NOT NULL,
+            status TEXT DEFAULT 'upcoming',
+            actual_date TEXT DEFAULT '',
+            note TEXT DEFAULT '',
+            recorded_by TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS medication (
+            id TEXT PRIMARY KEY,
+            baby_id TEXT NOT NULL,
+            family_id TEXT DEFAULT '',
+            medicine_name TEXT NOT NULL,
+            dosage TEXT DEFAULT '',
+            unit TEXT DEFAULT '',
+            start_time TEXT NOT NULL,
+            end_time TEXT DEFAULT '',
+            frequency TEXT DEFAULT '',
+            note TEXT DEFAULT '',
+            recorded_by TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+    """)
     conn.commit()
     conn.close()
 

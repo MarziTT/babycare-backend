@@ -20,12 +20,18 @@ def create_app():
     from routes.diaper import diaper_bp
     from routes.ai import ai_bp
     from routes.analysis import analysis_bp
+    from routes.growth import growth_bp
+    from routes.vaccination import vaccination_bp
+    from routes.medication import medication_bp
 
     app.register_blueprint(feeding_bp)
     app.register_blueprint(sleep_bp)
     app.register_blueprint(diaper_bp)
     app.register_blueprint(ai_bp)
     app.register_blueprint(analysis_bp)
+    app.register_blueprint(growth_bp)
+    app.register_blueprint(vaccination_bp)
+    app.register_blueprint(medication_bp)
 
     # 健康检查
     @app.route("/api/health")
