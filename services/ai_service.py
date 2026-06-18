@@ -70,13 +70,20 @@ def parse_voice_input(user_text: str) -> dict:
     try:
         result_text = call_llm(messages, temperature=0.1)
         result_text = result_text.strip()
+        # 移除可能的 markdown 代码块标记
         if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1]
+            lines = result_text.split("\n")
+            result_text = "\n".join(lines[1:])
             if result_text.endswith("```"):
                 result_text = result_text[:-3]
+        # 尝试提取第一个 JSON 对象
+        brace_start = result_text.find("{")
+        brace_end = result_text.rfind("}")
+        if brace_start != -1 and brace_end > brace_start:
+            result_text = result_text[brace_start:brace_end+1]
         return json.loads(result_text)
     except Exception as e:
-        logger.error(f"Voice parse failed: {e}")
+        logger.error(f"Voice parse failed: {e}, raw: {result_text[:200] if 'result_text' in dir() else 'N/A'}")
         return {"record_type": "unknown", "parsed": {}, "confidence": 0}
 
 
