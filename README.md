@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: fe7e0515290b04070c7aa137e3bf58e6_8855432a6afd11f1aa625254006c9bbf
+    ReservedCode1: 6eNULI053F9zCpejDcCH/uFYjn8stgRvw2mEYvCy/cKUdKMNtToh29ofmA4Ntjq4ceu4uj6sYX5bd2kWU8sdINggPqMu0MatQoqfrkcO+ugHt7U6T5MBoTo5AqhwBE8NsLUrVJ5YWcEbrc37gM8FYSiISN52RqtEsS3gElHF1j+xfnggHhhBKrvlu2s=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: fe7e0515290b04070c7aa137e3bf58e6_8855432a6afd11f1aa625254006c9bbf
+    ReservedCode2: 6eNULI053F9zCpejDcCH/uFYjn8stgRvw2mEYvCy/cKUdKMNtToh29ofmA4Ntjq4ceu4uj6sYX5bd2kWU8sdINggPqMu0MatQoqfrkcO+ugHt7U6T5MBoTo5AqhwBE8NsLUrVJ5YWcEbrc37gM8FYSiISN52RqtEsS3gElHF1j+xfnggHhhBKrvlu2s=
+---
+
 # BabyCare 育儿助手
 
 夫妻双人协同的育儿记录微信小程序，AI 驱动的语音录入 + 智能分析。
@@ -86,3 +97,4 @@ python app.py               # 本地开发 http://localhost:5000
 | `SECRET_KEY` | ✅ | Flask 密钥 |
 | `DEBUG` | - | 调试模式 |
 | `PORT` | - | 端口 |
+*（内容由AI生成，仅供参考）*
