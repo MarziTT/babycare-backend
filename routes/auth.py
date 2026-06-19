@@ -1,6 +1,6 @@
 """微信登录接口"""
 from flask import Blueprint, request, jsonify
-import requests
+import httpx
 from database import get_db
 from config import Config
 
@@ -26,7 +26,7 @@ def login():
         'js_code': code,
         'grant_type': 'authorization_code'
     }
-    resp = requests.get(wx_url, params=params, timeout=10)
+    resp = httpx.get(wx_url, params=params, timeout=10)
     wx_data = resp.json()
 
     openid = wx_data.get('openid')
