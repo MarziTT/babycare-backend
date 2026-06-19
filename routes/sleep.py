@@ -38,33 +38,18 @@ def create_sleep():
 
     db = get_db()
 
-    # 去重：查询今天同 baby_id、start_time 在 5 分钟内的记录
+    # 去重：同一 start_time 精确匹配（时间戳误差 3 秒内），防双击重复提交
     today = datetime.now().strftime("%Y-%m-%d")
     dup_rows = db.execute(
         "SELECT * FROM sleep WHERE baby_id=? AND date(start_time)=? "
-        "AND ABS(strftime('%s', start_time) - strftime('%s', ?)) < 300 "
+        "AND ABS(strftime('%s', start_time) - strftime('%s', ?)) < 3 "
         "ORDER BY start_time ASC LIMIT 1",
         (baby_id, today, start_time)
     ).fetchall()
 
     if dup_rows:
-        dup = dict(dup_rows[0])
-        if dup.get("recorded_by") != recorded_by:
-            try:
-                dup_time = datetime.fromisoformat(dup["start_time"])
-                cur_time = datetime.fromisoformat(start_time)
-                diff_seconds = abs((cur_time - dup_time).total_seconds())
-                if diff_seconds < 60:
-                    diff_str = str(int(diff_seconds)) + "秒"
-                else:
-                    diff_str = str(int(diff_seconds // 60)) + "分钟"
-            except Exception:
-                diff_str = "5分钟"
-            db.close()
-            return jsonify({"code": 409, "message": "该记录已在" + diff_str + "前由其他成员记录过了"})
-        else:
-            db.close()
-            return jsonify({"code": 409, "message": "请勿重复提交"})
+        db.close()
+        return jsonify({"code": 409, "message": "请勿重复提交"})
 
     record = {
         "id": str(uuid.uuid4()),
