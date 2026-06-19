@@ -37,6 +37,60 @@ def transcribe_audio(audio_base64: str, audio_format: str = "mp3") -> str:
         return data.get("text", "")
 
 
+def _keyword_fallback(user_text: str):
+    """关键词兜底解析 — 不依赖 LLM，零延迟零费用"""
+    text = user_text.strip()
+    if not text:
+        return None
+
+    # 尿布
+    diaper_kw = ['尿布', '尿不湿', '拉了', '拉屎', '拉粑粑', '尿了', '拉臭臭', '换尿', '换了尿', '拉便便', '大便']
+    if any(kw in text for kw in diaper_kw):
+        dt = 'wet'
+        if '干' in text or '尿' in text:
+            dt = 'wet'
+        if '拉' in text or '粑' in text or '臭' in text or '便' in text:
+            dt = 'mixed'
+        if '都有' in text or ('干' in text and '湿' in text):
+            dt = 'mixed'
+        return {"record_type": "diaper", "parsed": {"diaper_type": dt}, "confidence": 0.9}
+
+    # 喂奶
+    feeding_kw = ['喂奶', '喂了', '喝了', '吃了', '母乳', '奶粉', '瓶喂', '左边', '右边', '左侧', '右侧', '亲喂', '吸奶', '哺乳']
+    if any(kw in text for kw in feeding_kw):
+        side = 'right'
+        if '左' in text:
+            side = 'left'
+        if '瓶' in text or '奶粉' in text:
+            side = 'bottle'
+
+        import re
+        dur_match = re.search(r'(\d+)\s*(分钟|分)', text)
+        vol_match = re.search(r'(\d+)\s*(ml|毫升|oz)', text)
+        duration = int(dur_match.group(1)) if dur_match else 0
+        amount = int(vol_match.group(1)) if vol_match else 0
+        if amount == 0:
+            vol_match2 = re.search(r'(\d{2,3})\s*(?!分|分钟)', text)
+            if vol_match2:
+                amount = int(vol_match2.group(1))
+
+        return {"record_type": "feeding", "parsed": {"side": side, "duration_minutes": duration, "amount_ml": amount}, "confidence": 0.9}
+
+    # 睡眠
+    sleep_kw = ['睡了', '睡觉', '小睡', '午睡', '打盹', 'nap']
+    if any(kw in text for kw in sleep_kw):
+        import re
+        dur_match = re.search(r'(\d+)\s*(分钟|分|小时|h)', text)
+        duration = int(dur_match.group(1)) if dur_match else 0
+        if '小时' in text or 'h' in text:
+            duration = duration * 60 if duration else 30
+        if duration == 0:
+            duration = 30  # 默认30分钟
+        return {"record_type": "sleep", "parsed": {"duration_minutes": duration}, "confidence": 0.85}
+
+    return None
+
+
 VOICE_PARSE_PROMPT = """你是一个育儿助手，负责将用户的语音录入解析为结构化的育儿记录。
 
 用户说了一段话，请判断它属于哪种记录类型，并提取关键信息。
