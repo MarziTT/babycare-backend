@@ -45,6 +45,19 @@ def generate_analysis(
     period: str = "weekly",
 ) -> dict:
     """生成 AI 分析报告"""
+    # 空记录检查：没有任何记录时直接返回友好提示
+    total = len(feeding_records) + len(sleep_records) + len(diaper_records)
+    if total == 0:
+        return {
+            "empty": True,
+            "message": "本周还没有记录，开始记录后即可生成育儿报告",
+            "feeding_summary": {"daily_avg_count": 0, "daily_avg_ml": 0, "trend": "暂无数据"},
+            "sleep_summary": {"daily_avg_hours": 0, "trend": "暂无数据"},
+            "diaper_summary": {"daily_avg_count": 0, "wet_ratio": 0, "trend": "暂无数据"},
+            "suggestions": ["从今天开始记录宝宝的喂养、睡眠和尿布数据吧"],
+            "alerts": [],
+        }
+
     data = {
         "period": period,
         "feeding": feeding_records,

@@ -15,9 +15,6 @@ def get_analysis_report():
     sleep_records = data.get("sleep", [])
     diaper_records = data.get("diaper", [])
 
-    if not any([feeding_records, sleep_records, diaper_records]):
-        return jsonify({"code": 400, "message": "请提供至少一种记录数据"}), 400
-
     report = generate_analysis(feeding_records, sleep_records, diaper_records, period)
     return jsonify({"code": 0, "data": report, "message": "ok"})
 
