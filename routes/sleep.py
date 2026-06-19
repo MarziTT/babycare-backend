@@ -89,6 +89,17 @@ def create_sleep():
     return jsonify({"code": 0, "data": record, "message": "记录成功"})
 
 
+@sleep_bp.route("/api/sleep/<record_id>", methods=["GET"])
+def get_sleep(record_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM sleep WHERE id=?", (record_id,)).fetchone()
+    db.close()
+    if not row:
+        return jsonify({"code": 404, "message": "记录不存在"})
+    record = dict(row)
+    return jsonify({"code": 0, "data": record, "message": "ok"})
+
+
 @sleep_bp.route("/api/sleep/<record_id>", methods=["PUT"])
 def update_sleep(record_id):
     data = request.json

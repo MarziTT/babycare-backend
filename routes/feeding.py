@@ -93,6 +93,17 @@ def create_feeding():
     return jsonify({"code": 0, "data": record, "message": "记录成功"})
 
 
+@feeding_bp.route("/api/feeding/<record_id>", methods=["GET"])
+def get_feeding(record_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM feeding WHERE id=?", (record_id,)).fetchone()
+    db.close()
+    if not row:
+        return jsonify({"code": 404, "message": "记录不存在"})
+    record = dict(row)
+    return jsonify({"code": 0, "data": record, "message": "ok"})
+
+
 @feeding_bp.route("/api/feeding/<record_id>", methods=["PUT"])
 def update_feeding(record_id):
     data = request.json
