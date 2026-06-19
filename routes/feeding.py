@@ -93,6 +93,20 @@ def create_feeding():
     return jsonify({"code": 0, "data": record, "message": "记录成功"})
 
 
+@feeding_bp.route("/api/feeding/<record_id>", methods=["PUT"])
+def update_feeding(record_id):
+    data = request.json
+    db = get_db()
+    db.execute(
+        "UPDATE feeding SET feed_type=?, start_time=?, end_time=?, duration_minutes=?, amount_ml=?, note=? WHERE id=?",
+        (data.get("feed_type", "left"), data.get("start_time", ""), data.get("end_time", ""),
+         data.get("duration_minutes", 0), data.get("amount_ml", 0), data.get("note", ""), record_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({"code": 0, "message": "已更新"})
+
+
 @feeding_bp.route("/api/feeding/<record_id>", methods=["DELETE"])
 def delete_feeding(record_id):
     db = get_db()

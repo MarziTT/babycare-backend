@@ -88,6 +88,19 @@ def create_diaper():
     return jsonify({"code": 0, "data": record, "message": "记录成功"})
 
 
+@diaper_bp.route("/api/diaper/<record_id>", methods=["PUT"])
+def update_diaper(record_id):
+    data = request.json
+    db = get_db()
+    db.execute(
+        "UPDATE diaper SET diaper_type=?, time=?, note=? WHERE id=?",
+        (data.get("diaper_type", "wet"), data.get("time", ""), data.get("note", ""), record_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({"code": 0, "message": "已更新"})
+
+
 @diaper_bp.route("/api/diaper/<record_id>", methods=["DELETE"])
 def delete_diaper(record_id):
     db = get_db()

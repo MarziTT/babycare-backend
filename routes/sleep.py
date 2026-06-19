@@ -89,6 +89,20 @@ def create_sleep():
     return jsonify({"code": 0, "data": record, "message": "记录成功"})
 
 
+@sleep_bp.route("/api/sleep/<record_id>", methods=["PUT"])
+def update_sleep(record_id):
+    data = request.json
+    db = get_db()
+    db.execute(
+        "UPDATE sleep SET start_time=?, end_time=?, duration_minutes=?, note=? WHERE id=?",
+        (data.get("start_time", ""), data.get("end_time", ""),
+         data.get("duration_minutes", 0), data.get("note", ""), record_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({"code": 0, "message": "已更新"})
+
+
 @sleep_bp.route("/api/sleep/<record_id>", methods=["DELETE"])
 def delete_sleep(record_id):
     db = get_db()
