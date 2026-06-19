@@ -116,7 +116,12 @@ VOICE_PARSE_PROMPT = """你是一个育儿助手，负责将用户的语音录�
 
 
 def parse_voice_input(user_text: str) -> dict:
-    """解析语音输入，返回结构化记录"""
+    """解析语音输入，返回结构化记录（关键词优先，LLM兜底）"""
+    # 先走关键词兜底（零延迟、零费用）
+    fallback = _keyword_fallback(user_text)
+    if fallback:
+        return fallback
+
     messages = [
         {"role": "system", "content": "你是一个精确的语音解析器，只输出JSON。"},
         {"role": "user", "content": VOICE_PARSE_PROMPT.format(user_text=user_text)},

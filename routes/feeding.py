@@ -32,6 +32,42 @@ def list_feeding():
 @feeding_bp.route("/api/feeding", methods=["POST"])
 def create_feeding():
     data = request.json
+    baby_id = data.get("baby_id", "")
+    feed_type = data.get("feed_type", "left")
+    start_time = data.get("start_time", datetime.now().isoformat())
+    recorded_by = data.get("recorded_by", "")
+
+    db = get_db()
+
+    # 去重：查询今天同 baby_id、同 feed_type、start_time 在 5 分钟内的记录
+    today = datetime.now().strftime("%Y-%m-%d")
+    dup_rows = db.execute(
+        "SELECT * FROM feeding WHERE baby_id=? AND feed_type=? AND date(start_time)=? "
+        "AND ABS(strftime('%s', start_time) - strftime('%s', ?)) < 300 "
+        "ORDER BY start_time ASC LIMIT 1",
+        (baby_id, feed_type, today, start_time)
+    ).fetchall()
+
+    if dup_rows:
+        dup = dict(dup_rows[0])
+        if dup.get("recorded_by") != recorded_by:
+            # 计算时间差
+            try:
+                dup_time = datetime.fromisoformat(dup["start_time"])
+                cur_time = datetime.fromisoformat(start_time)
+                diff_seconds = abs((cur_time - dup_time).total_seconds())
+                if diff_seconds < 60:
+                    diff_str = str(int(diff_seconds)) + "秒"
+                else:
+                    diff_str = str(int(diff_seconds // 60)) + "分钟"
+            except Exception:
+                diff_str = "5分钟"
+            db.close()
+            return jsonify({"code": 409, "message": "该记录已在" + diff_str + "前由其他成员记录过了"})
+        else:
+            db.close()
+            return jsonify({"code": 409, "message": "请勿重复提交"})
+
     record = {
         "id": str(uuid.uuid4()),
         "baby_id": data.get("baby_id", ""),
@@ -46,7 +82,6 @@ def create_feeding():
         "created_at": datetime.now().isoformat(),
     }
 
-    db = get_db()
     db.execute(
         "INSERT INTO feeding (id,baby_id,family_id,feed_type,start_time,end_time,duration_minutes,amount_ml,note,recorded_by,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"], record["feed_type"],

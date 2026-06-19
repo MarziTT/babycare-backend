@@ -32,6 +32,41 @@ def list_diaper():
 @diaper_bp.route("/api/diaper", methods=["POST"])
 def create_diaper():
     data = request.json
+    baby_id = data.get("baby_id", "")
+    diaper_type = data.get("diaper_type", "wet")
+    time_val = data.get("time", datetime.now().isoformat())
+    recorded_by = data.get("recorded_by", "")
+
+    db = get_db()
+
+    # 去重：查询今天同 baby_id、同 diaper_type、time 在 5 分钟内的记录
+    today = datetime.now().strftime("%Y-%m-%d")
+    dup_rows = db.execute(
+        "SELECT * FROM diaper WHERE baby_id=? AND diaper_type=? AND date(time)=? "
+        "AND ABS(strftime('%s', time) - strftime('%s', ?)) < 300 "
+        "ORDER BY time ASC LIMIT 1",
+        (baby_id, diaper_type, today, time_val)
+    ).fetchall()
+
+    if dup_rows:
+        dup = dict(dup_rows[0])
+        if dup.get("recorded_by") != recorded_by:
+            try:
+                dup_time = datetime.fromisoformat(dup["time"])
+                cur_time = datetime.fromisoformat(time_val)
+                diff_seconds = abs((cur_time - dup_time).total_seconds())
+                if diff_seconds < 60:
+                    diff_str = str(int(diff_seconds)) + "秒"
+                else:
+                    diff_str = str(int(diff_seconds // 60)) + "分钟"
+            except Exception:
+                diff_str = "5分钟"
+            db.close()
+            return jsonify({"code": 409, "message": "该记录已在" + diff_str + "前由其他成员记录过了"})
+        else:
+            db.close()
+            return jsonify({"code": 409, "message": "请勿重复提交"})
+
     record = {
         "id": str(uuid.uuid4()),
         "baby_id": data.get("baby_id", ""),
@@ -43,7 +78,6 @@ def create_diaper():
         "created_at": datetime.now().isoformat(),
     }
 
-    db = get_db()
     db.execute(
         "INSERT INTO diaper (id,baby_id,family_id,diaper_type,time,note,recorded_by,created_at) VALUES (?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"], record["diaper_type"],
