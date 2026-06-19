@@ -1,11 +1,8 @@
 """喂奶记录 API"""
-import logging
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import uuid
 from database import get_db
-
-logger = logging.getLogger(__name__)
 
 feeding_bp = Blueprint("feeding", __name__)
 
