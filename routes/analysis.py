@@ -14,8 +14,14 @@ def get_analysis_report():
     feeding_records = data.get("feeding", [])
     sleep_records = data.get("sleep", [])
     diaper_records = data.get("diaper", [])
+    growth_records = data.get("growth", [])
+    vaccination_records = data.get("vaccination", [])
+    medication_records = data.get("medication", [])
+    notes = data.get("notes", [])
 
-    report = generate_analysis(feeding_records, sleep_records, diaper_records, period)
+    report = generate_analysis(feeding_records, sleep_records, diaper_records,
+                               growth_records, vaccination_records, medication_records, notes,
+                               period)
     return jsonify({"code": 0, "data": report, "message": "ok"})
 
 
