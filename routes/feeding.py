@@ -1,8 +1,11 @@
 """喂奶记录 API"""
+import logging
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import uuid
 from database import get_db
+
+logger = logging.getLogger(__name__)
 
 feeding_bp = Blueprint("feeding", __name__)
 
@@ -107,12 +110,17 @@ def get_feeding(record_id):
 @feeding_bp.route("/api/feeding/<record_id>", methods=["PUT"])
 def update_feeding(record_id):
     data = request.json
+    logger.info(f"[DEBUG-PUT] record_id={record_id}")
+    logger.info(f"[DEBUG-PUT] raw json keys: {list(data.keys()) if data else 'None'}")
+    logger.info(f"[DEBUG-PUT] note={repr(data.get('note', ''))}")
+    logger.info(f"[DEBUG-PUT] full data: {data}")
     db = get_db()
-    db.execute(
+    cursor = db.execute(
         "UPDATE feeding SET feed_type=?, start_time=?, end_time=?, duration_minutes=?, amount_ml=?, note=? WHERE id=?",
         (data.get("feed_type", "left"), data.get("start_time", ""), data.get("end_time", ""),
          data.get("duration_minutes", 0), data.get("amount_ml", 0), data.get("note", ""), record_id)
     )
+    logger.info(f"[DEBUG-PUT] rowcount={cursor.rowcount}")
     db.commit()
     db.close()
     return jsonify({"code": 0, "message": "已更新"})
