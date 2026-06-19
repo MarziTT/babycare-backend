@@ -133,6 +133,19 @@ def init_db():
         )
     """)
 
+    # 随手记表 — 语音输入兜底，轻量非结构化记录
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notes (
+            id TEXT PRIMARY KEY,
+            baby_id TEXT NOT NULL,
+            family_id TEXT DEFAULT '',
+            text TEXT NOT NULL,
+            time TEXT NOT NULL,
+            recorded_by TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+    """)
+
     # 索引
     conn.execute("CREATE INDEX IF NOT EXISTS idx_users_openid ON users(openid)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_family_members_openid ON family_members(openid)")

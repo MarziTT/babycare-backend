@@ -23,6 +23,7 @@ def create_app():
     from routes.growth import growth_bp
     from routes.vaccination import vaccination_bp
     from routes.medication import medication_bp
+    from routes.note import notes_bp
     from routes.auth import auth_bp
     from routes.family import family_bp
 
@@ -34,6 +35,7 @@ def create_app():
     app.register_blueprint(growth_bp)
     app.register_blueprint(vaccination_bp)
     app.register_blueprint(medication_bp)
+    app.register_blueprint(notes_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(family_bp)
 

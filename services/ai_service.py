@@ -105,7 +105,7 @@ def _keyword_fallback(user_text: str):
     if not text:
         return None
 
-    # 尿布
+    # ========== 尿布 ==========
     diaper_kw = ['尿布', '尿不湿', '拉了', '拉屎', '拉粑粑', '尿了', '拉臭臭', '换尿', '换了尿', '拉便便', '大便']
     if any(kw in text for kw in diaper_kw):
         dt = 'wet'
@@ -124,7 +124,7 @@ def _keyword_fallback(user_text: str):
 
         return {"record_type": "diaper", "parsed": parsed, "confidence": 0.9}
 
-    # 喂奶
+    # ========== 喂奶 ==========
     feeding_kw = ['喂奶', '喂了', '喝了', '吃了', '母乳', '奶粉', '瓶喂', '左边', '右边', '左侧', '右侧', '亲喂', '吸奶', '哺乳']
     if any(kw in text for kw in feeding_kw):
         parsed = {}
@@ -161,7 +161,7 @@ def _keyword_fallback(user_text: str):
 
         return {"record_type": "feeding", "parsed": parsed, "confidence": 0.9}
 
-    # 睡眠
+    # ========== 睡眠 ==========
     sleep_kw = ['睡了', '睡觉', '小睡', '午睡', '打盹', 'nap']
     if any(kw in text for kw in sleep_kw):
         dur_match = re.search(r'(\d+)\s*(分钟|分|小时|h)', text)
@@ -181,7 +181,156 @@ def _keyword_fallback(user_text: str):
 
         return {"record_type": "sleep", "parsed": parsed, "confidence": 0.85}
 
-    return None
+    # ========== 成长记录 ==========
+    growth_kw = ['身高', '体重', '称体重', '称了', '头围', '长高', '量了身高', '量身高', '量了体重', '量体重', '量头围', '儿保']
+    if any(kw in text for kw in growth_kw):
+        parsed = {}
+
+        # 身高
+        h_match = re.search(r'身高\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(厘米|cm)?', text)
+        h_match2 = re.search(r'(\d+(?:\.\d+)?)\s*(厘米|cm)\s*(身高|高)', text)
+        if h_match:
+            parsed['height_cm'] = float(h_match.group(1))
+        elif h_match2:
+            parsed['height_cm'] = float(h_match2.group(1))
+
+        # 体重（斤需 ÷2）
+        w_match = re.search(r'体重\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(公斤|kg|斤|克|g)?', text)
+        w_match2 = re.search(r'称了\s*(\d+(?:\.\d+)?)\s*(公斤|kg|斤|克|g)?', text)
+        w_raw = w_match or w_match2
+        if w_raw:
+            w_val = float(w_raw.group(1))
+            w_unit = w_raw.group(2) or ''
+            if w_unit in ('斤',):
+                w_val = round(w_val / 2, 2)
+            elif w_unit in ('克', 'g'):
+                w_val = round(w_val / 1000, 2)
+            parsed['weight_kg'] = w_val
+
+        # 头围
+        hc_match = re.search(r'头围\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(厘米|cm)?', text)
+        if hc_match:
+            parsed['head_circumference_cm'] = float(hc_match.group(1))
+
+        # 时间
+        t = _parse_time(text)
+        if t:
+            parsed['record_date'] = t[:10]
+        else:
+            parsed['record_date'] = datetime.now().strftime('%Y-%m-%d')
+
+        # 只要提取到了数值就返回
+        if parsed.get('height_cm') or parsed.get('weight_kg') or parsed.get('head_circumference_cm'):
+            return {"record_type": "growth", "parsed": parsed, "confidence": 0.85}
+
+        # 只说了"称了"等无具体数值 → 归为 note
+        return {
+            "record_type": "note",
+            "parsed": {"text": text, "time": (_parse_time(text) or datetime.now().isoformat())},
+            "confidence": 0.6
+        }
+
+    # ========== 用药记录 ==========
+    med_kw = ['吃药', '用药', '喂药', '维生素', '维D', 'D3', 'DHA', '益生菌', '退烧药', '退烧', '体温',
+              '发烧', '发热', '感冒', '咳嗽', '流鼻涕', '拉肚子', '腹泻', '便秘', '过敏', '湿疹',
+              '红屁股', '吐了', '吐奶', '痱子', '补钙', '补锌', '补铁', '钙片', '锌',
+              '美林', '布洛芬', '泰诺', '对乙酰', '止咳', '蒙脱石', '妈咪爱']
+    if any(kw in text for kw in med_kw):
+        parsed = {}
+
+        # 药名：从关键词列表映射
+        drug_map = [
+            ('维生素D|维D', '维生素D'),
+            ('D3(?!HA)', '维生素D3'),
+            ('DHA', 'DHA'),
+            ('益生菌|妈咪爱', '益生菌'),
+            ('钙片|补钙|钙', '钙'),
+            ('锌|补锌', '锌'),
+            ('铁|补铁', '铁剂'),
+            ('退烧药|美林|布洛芬', '布洛芬'),
+            ('泰诺|对乙酰', '对乙酰氨基酚'),
+            ('止咳', '止咳药'),
+            ('蒙脱石', '蒙脱石散'),
+            ('痱子', '痱子护理'),
+        ]
+        for pat, name in drug_map:
+            if re.search(pat, text):
+                parsed['medicine_name'] = name
+                break
+
+        # 没匹配到具体药名 → 症状兜底
+        if not parsed.get('medicine_name'):
+            symptom_map = [
+                ('发烧|发热', '发烧'),
+                ('咳嗽', '咳嗽'),
+                ('流鼻涕', '流鼻涕'),
+                ('感冒', '感冒'),
+                ('拉肚子|腹泻', '腹泻'),
+                ('便秘', '便秘'),
+                ('过敏', '过敏'),
+                ('湿疹', '湿疹'),
+                ('红屁股', '红屁股'),
+                ('吐了|吐奶', '呕吐'),
+            ]
+            for pat, sym in symptom_map:
+                if re.search(pat, text):
+                    parsed['medicine_name'] = sym
+                    break
+
+        if not parsed.get('medicine_name'):
+            parsed['medicine_name'] = '用药记录'
+
+        # 体温
+        temp_match = re.search(r'(体温|发烧|发热)\s*[:：]?\s*(\d{2}(?:\.\d)?)\s*度?', text)
+        temp_match2 = re.search(r'(\d{2}(?:\.\d)?)\s*度', text)
+        t_raw = temp_match or temp_match2
+        if t_raw:
+            val = float(t_raw.group(2) if temp_match else t_raw.group(1))
+            if 30 <= val <= 45:  # 合理体温范围
+                parsed['dosage'] = str(val)
+                parsed['unit'] = '度'
+
+        # 时间
+        start_time = _parse_time(text) or datetime.now().isoformat()
+        parsed['start_time'] = start_time
+
+        return {"record_type": "medication", "parsed": parsed, "confidence": 0.85}
+
+    # ========== 疫苗接种 ==========
+    vax_kw = ['疫苗', '打疫苗', '接种', '预防针', '疫苗反应']
+    if any(kw in text for kw in vax_kw):
+        parsed = {}
+
+        # 提取疫苗名：常见疫苗关键词
+        vax_names = {
+            '乙肝': '乙肝疫苗', '卡介': '卡介苗', '脊灰': '脊髓灰质炎疫苗',
+            '百白破': '百白破疫苗', '麻腮风': '麻腮风疫苗', '流脑': '流脑疫苗',
+            '乙脑': '乙脑疫苗', '甲肝': '甲肝疫苗', '水痘': '水痘疫苗',
+            '肺炎': '肺炎疫苗', '轮状': '轮状病毒疫苗', '手足口': '手足口病疫苗',
+            '流感': '流感疫苗', 'hib': 'Hib疫苗', 'HIB': 'Hib疫苗',
+            '五联': '五联疫苗', '四联': '四联疫苗', '三联': '三联疫苗',
+            '13价': '13价肺炎疫苗', '23价': '23价肺炎疫苗',
+        }
+        for key, name in vax_names.items():
+            if key in text:
+                parsed['vaccine_name'] = name
+                break
+
+        if not parsed.get('vaccine_name'):
+            parsed['vaccine_name'] = '疫苗接种'
+
+        parsed['scheduled_date'] = datetime.now().strftime('%Y-%m-%d')
+        parsed['status'] = 'completed'
+
+        return {"record_type": "vaccination", "parsed": parsed, "confidence": 0.85}
+
+    # ========== 兜底：随手记 ==========
+    # 所有未能归类的输入都存为 note
+    return {
+        "record_type": "note",
+        "parsed": {"text": text, "time": (_parse_time(text) or datetime.now().isoformat())},
+        "confidence": 0.5
+    }
 
 
 VOICE_PARSE_PROMPT = """你是一个育儿助手，负责将用户的语音录入解析为结构化的育儿记录。
