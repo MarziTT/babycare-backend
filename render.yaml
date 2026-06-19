@@ -3,7 +3,7 @@ services:
     name: babycare-backend
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app -b 0.0.0.0:$PORT
+    startCommand: python app.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
