@@ -156,10 +156,15 @@ def _keyword_fallback(user_text: str):
         # 时间解析
         start_time = _parse_time(text)
         if start_time:
-            parsed['start_time'] = start_time
-            if parsed['duration_minutes'] > 0:
-                dt = datetime.fromisoformat(start_time)
-                parsed['end_time'] = (dt + timedelta(minutes=parsed['duration_minutes'])).isoformat()
+            dt = datetime.fromisoformat(start_time)
+            # "刚刚/刚/现在" + 有持续时长 → 行为刚结束，now 是 end_time
+            if parsed['duration_minutes'] > 0 and re.search(r'(刚刚|现在|刚才|刚)', text):
+                parsed['end_time'] = dt.isoformat()
+                parsed['start_time'] = (dt - timedelta(minutes=parsed['duration_minutes'])).isoformat()
+            else:
+                parsed['start_time'] = start_time
+                if parsed['duration_minutes'] > 0:
+                    parsed['end_time'] = (dt + timedelta(minutes=parsed['duration_minutes'])).isoformat()
 
         return {"record_type": "feeding", "parsed": parsed, "confidence": 0.9}
 
@@ -170,7 +175,6 @@ def _keyword_fallback(user_text: str):
         duration = int(dur_match.group(1)) if dur_match else 0
         if dur_match and ('小时' in text or 'h' in text):
             duration = duration * 60 if duration else 0
-        # 不再默认 30 分钟，未指定时长则不填 duration
 
         parsed = {}
         if duration > 0:
@@ -178,10 +182,15 @@ def _keyword_fallback(user_text: str):
 
         start_time = _parse_time(text)
         if start_time:
-            parsed['start_time'] = start_time
+            # "刚刚/刚/现在" + 有持续时长 → 睡眠刚结束，now 是 end_time
             dt = datetime.fromisoformat(start_time)
-            if duration > 0:
-                parsed['end_time'] = (dt + timedelta(minutes=duration)).isoformat()
+            if duration > 0 and re.search(r'(刚刚|现在|刚才|刚)', text):
+                parsed['end_time'] = dt.isoformat()
+                parsed['start_time'] = (dt - timedelta(minutes=duration)).isoformat()
+            else:
+                parsed['start_time'] = start_time
+                if duration > 0:
+                    parsed['end_time'] = (dt + timedelta(minutes=duration)).isoformat()
 
         return {"record_type": "sleep", "parsed": parsed, "confidence": 0.85}
 
