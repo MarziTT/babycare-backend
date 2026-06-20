@@ -36,9 +36,21 @@ def create_sleep():
     data = request.json
     baby_id = data.get("baby_id", "")
     start_time = data.get("start_time", datetime.now(CST).isoformat())
+    end_time = data.get("end_time", "")
     recorded_by = data.get("recorded_by", "")
 
     db = get_db()
+
+    # 校验：开始时间不能晚于结束时间
+    if end_time and start_time:
+        st = datetime.fromisoformat(start_time)
+        et = datetime.fromisoformat(end_time)
+        if st >= et:
+            db.close()
+            return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"})
+        if et > datetime.now(CST):
+            db.close()
+            return jsonify({"code": 400, "message": "结束时间不能是未来时间"})
 
     # 去重：同一 start_time 精确匹配（时间戳误差 3 秒内），防双击重复提交
     today = datetime.now(CST).strftime("%Y-%m-%d")

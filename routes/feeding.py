@@ -53,9 +53,21 @@ def create_feeding():
     baby_id = data.get("baby_id", "")
     feed_type = data.get("feed_type", "left")
     start_time = data.get("start_time", datetime.now(CST).isoformat())
+    end_time = data.get("end_time", "")
     recorded_by = data.get("recorded_by", "")
 
     db = get_db()
+
+    # 校验：开始时间不能晚于结束时间，结束时间不能是未来
+    if end_time and start_time:
+        st = datetime.fromisoformat(start_time)
+        et = datetime.fromisoformat(end_time)
+        if st >= et:
+            db.close()
+            return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"})
+        if et > datetime.now(CST):
+            db.close()
+            return jsonify({"code": 400, "message": "结束时间不能是未来时间"})
 
     # 去重：查询今天同 baby_id、同 feed_type、start_time 在 5 分钟内的记录
     today = datetime.now(CST).strftime("%Y-%m-%d")

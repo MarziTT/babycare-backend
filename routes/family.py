@@ -492,6 +492,24 @@ def get_timeline():
     db = get_db()
     events = []
 
+    # 一次性获取家庭成员角色映射
+    members = db.execute(
+        'SELECT openid, role FROM family_members WHERE family_id = ?',
+        (family_id,)
+    ).fetchall()
+    role_map = {m['openid']: m['role'] for m in members}
+
+    # 获取用户昵称和头像
+    user_map = {}
+    openids = list(role_map.keys())
+    if openids:
+        placeholders = ','.join(['?'] * len(openids))
+        users = db.execute(
+            'SELECT openid, nickname, avatar_url FROM users WHERE openid IN (' + placeholders + ')',
+            openids
+        ).fetchall()
+        user_map = {u['openid']: {'nickname': u['nickname'], 'avatar': u['avatar_url']} for u in users}
+
     tables = [
         ('feeding', 'start_time', '喂奶'),
         ('sleep', 'start_time', '睡眠'),
@@ -509,7 +527,16 @@ def get_timeline():
             (family_id,)
         ).fetchall()
         for r in rows:
-            events.append(dict(r))
+            ev = dict(r)
+            recorded_by = ev.get('recorded_by', '')
+            # 补充 recorded_by_name / avatar（从 users 表）
+            if not ev.get('recorded_by_name') and recorded_by in user_map:
+                ev['recorded_by_name'] = user_map[recorded_by]['nickname'] or '家人'
+            if not ev.get('recorded_by_avatar') and recorded_by in user_map:
+                ev['recorded_by_avatar'] = user_map[recorded_by]['avatar'] or ''
+            # 补充角色
+            ev['recorded_by_role'] = role_map.get(recorded_by, '')
+            events.append(ev)
 
     # 按时间排序取最近 50 条
     def get_ts(e):
