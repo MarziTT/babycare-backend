@@ -238,109 +238,73 @@ def _keyword_fallback(user_text: str):
     if any(kw in text for kw in med_kw):
         parsed = {}
 
-        # 药名：从关键词列表映射
-        drug_map = [
-            ('维生素D|维D', '维生素D'),
-            ('D3(?!HA)', '维生素D3'),
-            ('DHA', 'DHA'),
-            ('益生菌|妈咪爱', '益生菌'),
-            ('钙片|补钙|钙', '钙'),
-            ('锌|补锌', '锌'),
-            ('铁|补铁', '铁剂'),
-            ('退烧药|美林|布洛芬', '布洛芬'),
-            ('泰诺|对乙酰', '对乙酰氨基酚'),
-            ('止咳', '止咳药'),
-            ('蒙脱石', '蒙脱石散'),
-            ('痱子', '痱子护理'),
-        ]
-        for pat, name in drug_map:
-            if re.search(pat, text):
-                parsed['medicine_name'] = name
+        med_name = None
+        for kw in med_kw[:4] + med_kw[7:]:
+            if kw in text:
+                med_name = kw
                 break
 
-        # 没匹配到具体药名 → 症状兜底
-        if not parsed.get('medicine_name'):
-            symptom_map = [
-                ('发烧|发热', '发烧'),
-                ('咳嗽', '咳嗽'),
-                ('流鼻涕', '流鼻涕'),
-                ('感冒', '感冒'),
-                ('拉肚子|腹泻', '腹泻'),
-                ('便秘', '便秘'),
-                ('过敏', '过敏'),
-                ('湿疹', '湿疹'),
-                ('红屁股', '红屁股'),
-                ('吐了|吐奶', '呕吐'),
-            ]
-            for pat, sym in symptom_map:
-                if re.search(pat, text):
-                    parsed['medicine_name'] = sym
-                    break
+        # 提取体温
+        temp_match = re.search(r'体温\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(度|℃)?', text)
+        temp_match2 = re.search(r'(\d{2,3}(?:\.\d+)?)\s*(度|℃)', text)
+        temp_raw = temp_match or temp_match2
+        dosage = ''
+        if temp_raw:
+            dosage = temp_raw.group(1)
+            unit = '℃'
+        else:
+            unit = ''
 
-        if not parsed.get('medicine_name'):
-            parsed['medicine_name'] = '用药记录'
+        # 提取剂量
+        dose_match = re.search(r'(\d+(?:\.\d+)?)\s*(ml|毫升|mg|毫克|滴)', text)
+        if dose_match and not temp_raw:
+            dosage = dose_match.group(1)
+            unit = dose_match.group(2)
 
-        # 体温
-        temp_match = re.search(r'(体温|发烧|发热)\s*[:：]?\s*(\d{2}(?:\.\d)?)\s*度?', text)
-        temp_match2 = re.search(r'(\d{2}(?:\.\d)?)\s*度', text)
-        t_raw = temp_match or temp_match2
-        if t_raw:
-            val = float(t_raw.group(2) if temp_match else t_raw.group(1))
-            if 30 <= val <= 45:  # 合理体温范围
-                parsed['dosage'] = str(val)
-                parsed['unit'] = '度'
+        parsed['medicine_name'] = med_name or text[:20]
+        if dosage:
+            parsed['dosage'] = dosage
+            parsed['unit'] = unit
 
-        # 时间
-        start_time = _parse_time(text) or datetime.now().isoformat()
-        parsed['start_time'] = start_time
+        t = _parse_time(text)
+        parsed['start_time'] = t or datetime.now().isoformat()
 
-        return {"record_type": "medication", "parsed": parsed, "confidence": 0.85}
+        return {"record_type": "medication", "parsed": parsed, "confidence": 0.75}
 
     # ========== 疫苗接种 ==========
-    vax_kw = ['疫苗', '打疫苗', '接种', '预防针', '疫苗反应']
-    if any(kw in text for kw in vax_kw):
+    vacc_kw = ['疫苗', '打针', '接种', '乙肝', '卡介苗', '脊灰', '百白破', '麻腮风', '水痘', '肺炎', '轮状', '流脑']
+    if any(kw in text for kw in vacc_kw):
         parsed = {}
-
-        # 提取疫苗名：常见疫苗关键词
-        vax_names = {
-            '乙肝': '乙肝疫苗', '卡介': '卡介苗', '脊灰': '脊髓灰质炎疫苗',
-            '百白破': '百白破疫苗', '麻腮风': '麻腮风疫苗', '流脑': '流脑疫苗',
-            '乙脑': '乙脑疫苗', '甲肝': '甲肝疫苗', '水痘': '水痘疫苗',
-            '肺炎': '肺炎疫苗', '轮状': '轮状病毒疫苗', '手足口': '手足口病疫苗',
-            '流感': '流感疫苗', 'hib': 'Hib疫苗', 'HIB': 'Hib疫苗',
-            '五联': '五联疫苗', '四联': '四联疫苗', '三联': '三联疫苗',
-            '13价': '13价肺炎疫苗', '23价': '23价肺炎疫苗',
-        }
-        for key, name in vax_names.items():
-            if key in text:
-                parsed['vaccine_name'] = name
+        for kw in vacc_kw[3:]:
+            if kw in text:
+                parsed['vaccine_name'] = kw
                 break
-
         if not parsed.get('vaccine_name'):
-            parsed['vaccine_name'] = '疫苗接种'
+            parsed['vaccine_name'] = text[:20]
 
-        parsed['scheduled_date'] = datetime.now().strftime('%Y-%m-%d')
+        t = _parse_time(text)
+        parsed['scheduled_date'] = (t or datetime.now().isoformat())[:10]
         parsed['status'] = 'completed'
 
-        return {"record_type": "vaccination", "parsed": parsed, "confidence": 0.85}
+        return {"record_type": "vaccination", "parsed": parsed, "confidence": 0.8}
 
-    # ========== 兜底：随手记 ==========
-    # 所有未能归类的输入都存为 note
-    return {
-        "record_type": "note",
-        "parsed": {"text": text, "time": (_parse_time(text) or datetime.now().isoformat())},
-        "confidence": 0.5
-    }
+    return None
 
 
-VOICE_PARSE_PROMPT = """你是一个育儿助手，负责将用户的语音录入解析为结构化的育儿记录。
+VOICE_PARSE_PROMPT = """你是一个精准的语音解析器，从育儿记录语音中提取结构化信息。
 
-用户说了一段话，请判断它属于哪种记录类型，并提取关键信息。
+输入：用户说的一句育儿记录（如"左边喂了15分钟"、"宝宝睡了半小时"）
 
-记录类型：
+你的任务是提取记录类型和关键字段。必须返回合法 JSON，不要输出其他内容。
+
+记录类型与字段映射：
 - "feeding"：喂奶记录 → 提取 side（left/right/bottle）、duration_minutes（时长分钟数）、amount_ml（奶量ml，无则为0）
 - "sleep"：睡眠记录 → 提取 duration_minutes（时长分钟数，含"小时"则×60，无时长默认30）
 - "diaper"：尿布记录 → 提取 diaper_type（wet/dry/mixed）
+- "growth"：成长记录 → 提取 height_cm（身高cm）、weight_kg（体重kg）、head_circumference_cm（头围cm）
+- "medication"：用药记录 → 提取 medicine_name、dosage、unit
+- "vaccination"：疫苗接种 → 提取 vaccine_name、scheduled_date
+- "note"：随手记/无法归类 → 提取 text、time
 
 时间规则（极其重要）：
 - 如果用户提到了具体时间（如"上午9点"、"下午3点半"、"4点"），必须提取 start_time（或尿布用 time）为 ISO 8601 格式（YYYY-MM-DDTHH:MM:SS），默认日期为今天
@@ -369,6 +333,51 @@ VOICE_PARSE_PROMPT = """你是一个育儿助手，负责将用户的语音录�
 }
 
 用户语音内容：
+{user_text}"""
+
+
+SMART_AGENT_PROMPT = """你是一个智能育儿助手，集成了记录解析和育儿问答功能。
+
+根据用户输入，判断意图并返回相应结果：
+
+【意图判断】
+1. 如果用户在记录宝宝行为（喂奶、睡眠、尿布、成长数据、用药、疫苗等）→ intent: "record"
+2. 如果是育儿咨询、闲聊、问候 → intent: "chat"
+
+【记录解析规则（intent=record）】
+提取结构化字段，规则与 voice-parse 一致：
+
+record_type 判断：
+- "feeding"：喂奶相关 → side(left/right/bottle，不确定则不填)、duration_minutes、amount_ml(无则为0)、start_time、end_time
+- "sleep"：睡眠相关 → duration_minutes(小时×60，无则默认30)、start_time、end_time
+- "diaper"：尿布相关 → diaper_type(wet/dry/mixed)、time
+- "growth"：成长数据 → height_cm、weight_kg、head_circumference_cm、record_date
+- "medication"：用药/生病 → medicine_name、dosage、unit、start_time
+- "vaccination"：疫苗接种 → vaccine_name、scheduled_date、status
+- "note"：其他无法明确归类 → text、time
+
+时间规则：
+- 提及具体时间（"上午9点"、"下午3点半"）→ start_time/time 为今天该时刻，ISO 8601
+- 没提时间 → 不填
+- 有时长 → 计算 end_time = start_time + duration_minutes
+
+reply 字段：始终生成一句友好的确认对话，让用户知道解析结果。例如：
+- "已识别：左侧喂奶 15 分钟，确认保存吗？"
+- "已识别：宝宝睡了 30 分钟，要保存这条睡眠记录吗？"
+
+【对话回复规则（intent=chat）】
+- 专业、温暖、简洁
+- 育儿相关：基于 WHO 和权威儿科指南
+- 涉及医疗建议时提醒咨询医生
+- 非育儿闲聊：友好简短回应
+
+【输出格式】
+严格返回 JSON，不要其他内容：
+{"intent": "record", "record_type": "feeding", "parsed": {"side": "left", "duration_minutes": 15, "amount_ml": 0, "start_time": "2026-06-20T09:00:00"}, "confidence": 0.95, "reply": "已识别：左侧喂奶 15 分钟，确认保存吗？"}
+或
+{"intent": "chat", "reply": "宝宝现在多大了？这个阶段的宝宝..."}
+
+用户输入：
 {user_text}"""
 
 
@@ -401,6 +410,50 @@ def parse_voice_input(user_text: str) -> dict:
     except Exception as e:
         logger.error(f"Voice parse failed: {e}, raw: {result_text[:200] if 'result_text' in dir() else 'N/A'}")
         return {"record_type": "unknown", "parsed": {}, "confidence": 0}
+
+
+def smart_agent(user_text: str) -> dict:
+    """智能助手 - 意图识别 + 记录解析 + 对话回复（关键词优先，LLM兜底）"""
+    # 先走关键词兜底判断是否有记录意图
+    fallback = _keyword_fallback(user_text)
+    if fallback:
+        # 有记录意图，生成友好的 reply
+        type_names = {
+            "feeding": "喂奶",
+            "sleep": "睡眠",
+            "diaper": "尿布",
+            "growth": "成长",
+            "medication": "用药",
+            "vaccination": "疫苗",
+            "note": "随手记",
+        }
+        tn = type_names.get(fallback["record_type"], "记录")
+        reply = f"已识别：{tn}记录，确认保存吗？"
+        fallback["reply"] = reply
+        fallback["intent"] = "record"
+        return fallback
+
+    # LLM 判断意图
+    messages = [
+        {"role": "system", "content": "你是一个智能育儿助手，精确返回JSON。"},
+        {"role": "user", "content": SMART_AGENT_PROMPT.format(user_text=user_text)},
+    ]
+    try:
+        result_text = call_llm(messages, temperature=0.1)
+        result_text = result_text.strip()
+        if result_text.startswith("```"):
+            lines = result_text.split("\n")
+            result_text = "\n".join(lines[1:])
+            if result_text.endswith("```"):
+                result_text = result_text[:-3]
+        brace_start = result_text.find("{")
+        brace_end = result_text.rfind("}")
+        if brace_start != -1 and brace_end > brace_start:
+            result_text = result_text[brace_start:brace_end+1]
+        return json.loads(result_text)
+    except Exception as e:
+        logger.error(f"Smart agent failed: {e}")
+        return {"intent": "chat", "reply": "抱歉，我暂时没理解您的意思，可以换个说法试试？"}
 
 
 CHAT_SYSTEM_PROMPT = """你是一个专业的育儿顾问助手，你可以：

@@ -1,7 +1,7 @@
 """AI 相关 API - 语音解析、智能问答"""
 import logging
 from flask import Blueprint, request, jsonify
-from services.ai_service import parse_voice_input, chat_with_parent, transcribe_audio
+from services.ai_service import parse_voice_input, chat_with_parent, smart_agent, transcribe_audio
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,26 @@ def voice_to_record():
         result = {"record_type": "unknown", "parsed": {}, "confidence": 0, "raw_text": text}
 
     return jsonify({"code": 0, "data": result, "message": "ok"})
+
+
+@ai_bp.route("/api/ai/smart", methods=["POST"])
+def ai_smart():
+    """智能助手 — 自动判断记录/对话意图"""
+    data = request.json
+    user_text = data.get("text", "")
+    if not user_text:
+        return jsonify({"code": 400, "message": "请输入内容"}), 400
+
+    try:
+        result = smart_agent(user_text)
+        return jsonify({"code": 0, "data": result, "message": "ok"})
+    except Exception as e:
+        logger.error(f"smart_agent failed: {e}")
+        return jsonify({
+            "code": 0,
+            "data": {"intent": "chat", "reply": "抱歉，出了点小问题，换个说法试试吧～"},
+            "message": "ok"
+        })
 
 
 @ai_bp.route("/api/ai/chat", methods=["POST"])
