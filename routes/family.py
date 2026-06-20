@@ -49,6 +49,7 @@ def create_family():
     baby_name = data.get('babyName', '宝宝')
     baby_birthday = data.get('babyBirthday', '')
     baby_avatar = data.get('babyAvatar', '')
+    baby_gender = data.get('babyGender', 'male')
     role = data.get('role', 'mom')  # 创建者角色
 
     if not openid:
@@ -58,13 +59,18 @@ def create_family():
     family_id = generate_family_id()
     now = datetime.now(CST).isoformat()
 
+    # 确保用户存在于 users 表（体验模式/demo 场景兜底）
+    existing_user = db.execute('SELECT openid FROM users WHERE openid = ?', (openid,)).fetchone()
+    if not existing_user:
+        db.execute('INSERT INTO users (openid, nickname, avatar_url) VALUES (?, ?, ?)', (openid, '', ''))
+
     # 初始化 babies 数组：将主宝宝也加入
     main_baby_id = 'baby-' + str(uuid.uuid4())[:8]
     babies = [{
         'id': main_baby_id,
         'name': baby_name,
         'birthday': baby_birthday,
-        'gender': '',
+        'gender': baby_gender,
         'avatar': baby_avatar
     }]
     permissions = {
@@ -171,7 +177,7 @@ def get_members():
     members = db.execute('''
         SELECT u.nickname, u.avatar_url, fm.role, fm.openid, fm.joined_at
         FROM family_members fm
-        JOIN users u ON fm.openid = u.openid
+        LEFT JOIN users u ON fm.openid = u.openid
         WHERE fm.family_id = ?
         ORDER BY fm.joined_at ASC
     ''', (member['family_id'],)).fetchall()
