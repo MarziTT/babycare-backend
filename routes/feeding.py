@@ -1,11 +1,13 @@
 """喂奶记录 API"""
 import logging
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import uuid
 from database import get_db
 
 logger = logging.getLogger(__name__)
+
+CST = timezone(timedelta(hours=8))
 
 feeding_bp = Blueprint("feeding", __name__)
 
@@ -50,13 +52,13 @@ def create_feeding():
     data = request.json
     baby_id = data.get("baby_id", "")
     feed_type = data.get("feed_type", "left")
-    start_time = data.get("start_time", datetime.now().isoformat())
+    start_time = data.get("start_time", datetime.now(CST).isoformat())
     recorded_by = data.get("recorded_by", "")
 
     db = get_db()
 
     # 去重：查询今天同 baby_id、同 feed_type、start_time 在 5 分钟内的记录
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(CST).strftime("%Y-%m-%d")
     dup_rows = db.execute(
         "SELECT * FROM feeding WHERE baby_id=? AND feed_type=? AND date(start_time)=? "
         "AND ABS(strftime('%s', start_time) - strftime('%s', ?)) < 300 "
@@ -89,7 +91,7 @@ def create_feeding():
         "baby_id": data.get("baby_id", ""),
         "family_id": data.get("family_id", ""),
         "feed_type": data.get("feed_type", "left"),
-        "start_time": data.get("start_time", datetime.now().isoformat()),
+        "start_time": data.get("start_time", datetime.now(CST).isoformat()),
         "end_time": data.get("end_time", ""),
         "duration_minutes": data.get("duration_minutes", 0),
         "amount_ml": data.get("amount_ml", 0),
@@ -97,7 +99,7 @@ def create_feeding():
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     db.execute(
@@ -154,7 +156,7 @@ def delete_feeding(record_id):
 @feeding_bp.route("/api/feeding/today", methods=["GET"])
 def today_summary():
     baby_id = request.args.get("baby_id", "")
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(CST).strftime("%Y-%m-%d")
 
     db = get_db()
     rows = db.execute(

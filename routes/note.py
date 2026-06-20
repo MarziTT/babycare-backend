@@ -1,6 +1,8 @@
 """随手记 API — 语音兜底轻量记录"""
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 import uuid
 from database import get_db
 
@@ -36,11 +38,11 @@ def create_note():
         "baby_id": data.get("baby_id", ""),
         "family_id": data.get("family_id", ""),
         "text": data.get("text", ""),
-        "time": data.get("time", datetime.now().isoformat()),
+        "time": data.get("time", datetime.now(CST).isoformat()),
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     if not record["text"]:

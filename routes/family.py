@@ -5,7 +5,9 @@ import string
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 from database import get_db
 
 family_bp = Blueprint('family', __name__)
@@ -54,7 +56,7 @@ def create_family():
 
     db = get_db()
     family_id = generate_family_id()
-    now = datetime.now().isoformat()
+    now = datetime.now(CST).isoformat()
 
     # 初始化 babies 数组：将主宝宝也加入
     main_baby_id = 'baby-' + str(uuid.uuid4())[:8]

@@ -2,20 +2,22 @@
 import json
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import httpx
 from config import Config
 
 logger = logging.getLogger(__name__)
 
+CST = timezone(timedelta(hours=8))  # 中国标准时间 UTC+8
+
 
 def _parse_time(text: str) -> str | None:
-    """从文本中提取时间点，返回 ISO 字符串。
+    """从文本中提取时间点，返回 ISO 字符串（北京时间 UTC+8）。
     
     支持：上午9点、下午4点、晚上8点、凌晨3点、6点半、8点20分、刚刚/现在
     智能回退：如果解析时间在未来（如凌晨说"下午4点"），自动回退一天。
     """
-    now = datetime.now()
+    now = datetime.now(CST)
 
     # 时间模式：(前缀, 正则, 小时计算函数)
     patterns = [
@@ -125,7 +127,7 @@ def _keyword_fallback(user_text: str):
         return {"record_type": "diaper", "parsed": parsed, "confidence": 0.9}
 
     # ========== 喂奶 ==========
-    feeding_kw = ['喂奶', '喂了', '喝了', '吃了', '母乳', '奶粉', '瓶喂', '左边', '右边', '左侧', '右侧', '亲喂', '吸奶', '哺乳']
+    feeding_kw = ['喂奶', '喝奶', '吃奶', '喂了', '喝了', '吃了', '母乳', '奶粉', '瓶喂', '左边', '右边', '左侧', '右侧', '亲喂', '吸奶', '哺乳']
     if any(kw in text for kw in feeding_kw):
         parsed = {}
 
@@ -166,18 +168,20 @@ def _keyword_fallback(user_text: str):
     if any(kw in text for kw in sleep_kw):
         dur_match = re.search(r'(\d+)\s*(分钟|分|小时|h)', text)
         duration = int(dur_match.group(1)) if dur_match else 0
-        if '小时' in text or 'h' in text:
-            duration = duration * 60 if duration else 30
-        if duration == 0:
-            duration = 30  # 默认30分钟
+        if dur_match and ('小时' in text or 'h' in text):
+            duration = duration * 60 if duration else 0
+        # 不再默认 30 分钟，未指定时长则不填 duration
 
-        parsed = {"duration_minutes": duration}
+        parsed = {}
+        if duration > 0:
+            parsed['duration_minutes'] = duration
 
         start_time = _parse_time(text)
         if start_time:
             parsed['start_time'] = start_time
             dt = datetime.fromisoformat(start_time)
-            parsed['end_time'] = (dt + timedelta(minutes=duration)).isoformat()
+            if duration > 0:
+                parsed['end_time'] = (dt + timedelta(minutes=duration)).isoformat()
 
         return {"record_type": "sleep", "parsed": parsed, "confidence": 0.85}
 
@@ -299,7 +303,7 @@ VOICE_PARSE_PROMPT = """你是一个精准的语音解析器，从育儿记录�
 
 记录类型与字段映射：
 - "feeding"：喂奶记录 → 提取 side（left/right/bottle）、duration_minutes（时长分钟数）、amount_ml（奶量ml，无则为0）
-- "sleep"：睡眠记录 → 提取 duration_minutes（时长分钟数，含"小时"则×60，无时长默认30）
+- "sleep"：睡眠记录 → 提取 duration_minutes（时长分钟数，含"小时"则×60，无时长不填）
 - "diaper"：尿布记录 → 提取 diaper_type（wet/dry/mixed）
 - "growth"：成长记录 → 提取 height_cm（身高cm）、weight_kg（体重kg）、head_circumference_cm（头围cm）
 - "medication"：用药记录 → 提取 medicine_name、dosage、unit
@@ -349,7 +353,7 @@ SMART_AGENT_PROMPT = """你是一个智能育儿助手，集成了记录解析�
 
 record_type 判断：
 - "feeding"：喂奶相关 → side(left/right/bottle，不确定则不填)、duration_minutes、amount_ml(无则为0)、start_time、end_time
-- "sleep"：睡眠相关 → duration_minutes(小时×60，无则默认30)、start_time、end_time
+- "sleep"：睡眠相关 → duration_minutes(小时×60，无则不填)、start_time、end_time
 - "diaper"：尿布相关 → diaper_type(wet/dry/mixed)、time
 - "growth"：成长数据 → height_cm、weight_kg、head_circumference_cm、record_date
 - "medication"：用药/生病 → medicine_name、dosage、unit、start_time

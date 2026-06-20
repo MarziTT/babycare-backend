@@ -1,6 +1,8 @@
 """疫苗接种提醒 API"""
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 import uuid
 from database import get_db
 
@@ -50,7 +52,7 @@ def create_vaccination():
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     if not record["vaccine_name"] or not record["scheduled_date"]:

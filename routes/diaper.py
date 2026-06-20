@@ -1,6 +1,8 @@
 """尿布记录 API"""
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 import uuid
 from database import get_db
 
@@ -34,13 +36,13 @@ def create_diaper():
     data = request.json
     baby_id = data.get("baby_id", "")
     diaper_type = data.get("diaper_type", "wet")
-    time_val = data.get("time", datetime.now().isoformat())
+    time_val = data.get("time", datetime.now(CST).isoformat())
     recorded_by = data.get("recorded_by", "")
 
     db = get_db()
 
     # 去重：查询今天同 baby_id、同 diaper_type、time 在 5 分钟内的记录
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(CST).strftime("%Y-%m-%d")
     dup_rows = db.execute(
         "SELECT * FROM diaper WHERE baby_id=? AND diaper_type=? AND date(time)=? "
         "AND ABS(strftime('%s', time) - strftime('%s', ?)) < 300 "
@@ -72,12 +74,12 @@ def create_diaper():
         "baby_id": data.get("baby_id", ""),
         "family_id": data.get("family_id", ""),
         "diaper_type": data.get("diaper_type", "wet"),
-        "time": data.get("time", datetime.now().isoformat()),
+        "time": data.get("time", datetime.now(CST).isoformat()),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     db.execute(

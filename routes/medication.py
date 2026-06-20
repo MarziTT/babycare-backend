@@ -1,6 +1,8 @@
 """用药记录 API"""
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 import uuid
 from database import get_db
 
@@ -38,14 +40,14 @@ def create_medication():
         "medicine_name": data.get("medicine_name", ""),
         "dosage": data.get("dosage", ""),
         "unit": data.get("unit", ""),
-        "start_time": data.get("start_time", datetime.now().isoformat()),
+        "start_time": data.get("start_time", datetime.now(CST).isoformat()),
         "end_time": data.get("end_time", ""),
         "frequency": data.get("frequency", ""),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     if not record["medicine_name"]:

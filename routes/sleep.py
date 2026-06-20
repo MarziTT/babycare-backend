@@ -1,6 +1,8 @@
 """睡眠记录 API"""
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 import uuid
 from database import get_db
 
@@ -33,13 +35,13 @@ def list_sleep():
 def create_sleep():
     data = request.json
     baby_id = data.get("baby_id", "")
-    start_time = data.get("start_time", datetime.now().isoformat())
+    start_time = data.get("start_time", datetime.now(CST).isoformat())
     recorded_by = data.get("recorded_by", "")
 
     db = get_db()
 
     # 去重：同一 start_time 精确匹配（时间戳误差 3 秒内），防双击重复提交
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(CST).strftime("%Y-%m-%d")
     dup_rows = db.execute(
         "SELECT * FROM sleep WHERE baby_id=? AND date(start_time)=? "
         "AND ABS(strftime('%s', start_time) - strftime('%s', ?)) < 3 "
@@ -55,14 +57,14 @@ def create_sleep():
         "id": str(uuid.uuid4()),
         "baby_id": data.get("baby_id", ""),
         "family_id": data.get("family_id", ""),
-        "start_time": data.get("start_time", datetime.now().isoformat()),
+        "start_time": data.get("start_time", datetime.now(CST).isoformat()),
         "end_time": data.get("end_time", ""),
         "duration_minutes": data.get("duration_minutes", 0),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     db.execute(

@@ -1,6 +1,8 @@
 """成长记录 API"""
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CST = timezone(timedelta(hours=8))
 import uuid
 from database import get_db
 
@@ -46,7 +48,7 @@ def create_growth():
         "id": str(uuid.uuid4()),
         "baby_id": data.get("baby_id", ""),
         "family_id": data.get("family_id", ""),
-        "record_date": data.get("record_date", datetime.now().strftime("%Y-%m-%d")),
+        "record_date": data.get("record_date", datetime.now(CST).strftime("%Y-%m-%d")),
         "height_cm": data.get("height_cm"),
         "weight_kg": data.get("weight_kg"),
         "head_circumference_cm": data.get("head_circumference_cm"),
@@ -54,7 +56,7 @@ def create_growth():
         "recorded_by": data.get("recorded_by", ""),
         "recorded_by_name": data.get("recorded_by_name", ""),
         "recorded_by_avatar": data.get("recorded_by_avatar", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(CST).isoformat(),
     }
 
     db = get_db()
