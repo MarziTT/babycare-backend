@@ -1,8 +1,11 @@
 """喂奶记录 API"""
+import logging
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import uuid
 from database import get_db
+
+logger = logging.getLogger(__name__)
 
 feeding_bp = Blueprint("feeding", __name__)
 
@@ -10,11 +13,24 @@ feeding_bp = Blueprint("feeding", __name__)
 @feeding_bp.route("/api/feeding", methods=["GET"])
 def list_feeding():
     baby_id = request.args.get("baby_id", "")
+    family_id = request.args.get("family_id", "")
     date = request.args.get("date", "")
     limit = int(request.args.get("limit", 50))
 
     db = get_db()
-    if date:
+    if family_id and baby_id != family_id:
+        # Backward compat: also include old records where baby_id = family_id
+        if date:
+            rows = db.execute(
+                "SELECT * FROM feeding WHERE (baby_id=? OR baby_id=?) AND date(start_time)=? ORDER BY start_time DESC LIMIT ?",
+                (baby_id, family_id, date, limit)
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT * FROM feeding WHERE (baby_id=? OR baby_id=?) ORDER BY start_time DESC LIMIT ?",
+                (baby_id, family_id, limit)
+            ).fetchall()
+    elif date:
         rows = db.execute(
             "SELECT * FROM feeding WHERE baby_id=? AND date(start_time)=? ORDER BY start_time DESC LIMIT ?",
             (baby_id, date, limit)
