@@ -10,6 +10,73 @@ logger = logging.getLogger(__name__)
 
 CST = timezone(timedelta(hours=8))  # 中国标准时间 UTC+8
 
+# 中文数字 → 整数映射
+_CN_NUM = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'半':0.5,'两':2}
+_CN_NUM_MAP = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'两':2}
+
+
+def _parse_cn_duration_minutes(text: str) -> int | None:
+    """解析中文时长文本，返回分钟数。支持：三十分钟/十五分钟/半小时/一小时/一个半小时 等"""
+    # 阿拉伯数字优先
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(分钟|分|小时|h)', text)
+    if m:
+        val = float(m.group(1))
+        unit = m.group(2)
+        if unit in ('小时', 'h'):
+            val *= 60
+        return int(val)
+
+    # 一个半小时 → 90
+    m = re.search(r'一[个]?半\s*小时', text)
+    if m:
+        return 90
+
+    # 半小时 → 30
+    m = re.search(r'半[个]?\s*(小时|钟头)', text)
+    if m:
+        return 30
+    m = re.search(r'半\s*分钟', text)
+    if m:
+        return 0  # 半分钟太短，返回0忽略
+
+    # X小时Y分钟 / X小时半 / X个半小时
+    m = re.search(r'([一二两三四五六七八九十])\s*[个]?\s*小时\s*([一二三四五半])?\s*[十]?\s*([一二三四五六七八九]?\s*分钟?)?', text)
+    if m:
+        hours = _CN_NUM_MAP.get(m.group(1), 0)
+        total = hours * 60
+        sub = m.group(2) if m.group(2) else ''
+        if sub == '半':
+            total += 30
+        elif sub in _CN_NUM_MAP:
+            total += _CN_NUM_MAP[sub] * 10 if m.group(3) else _CN_NUM_MAP[sub]
+        if m.group(3):
+            total += _CN_NUM_MAP.get(m.group(3).rstrip('分钟'), 0)
+        return total
+
+    # X十分钟
+    m = re.search(r'([一二两三四五六七八九])?十([一二三四五六七八九])?\s*分钟', text)
+    if m:
+        tens = _CN_NUM_MAP.get(m.group(1), 1) if m.group(1) else 1
+        ones = _CN_NUM_MAP.get(m.group(2), 0) if m.group(2) else 0
+        return tens * 10 + ones
+
+    # 纯数字 X分钟（如"八分钟"、"五分钟"）
+    m = re.search(r'([一二两三四五六七八九])\s*分钟', text)
+    if m:
+        return _CN_NUM_MAP.get(m.group(1), 0)
+
+    # X个小时
+    m = re.search(r'([一二两三四五六七八九十])\s*[个]?\s*小时', text)
+    if m:
+        return _CN_NUM_MAP.get(m.group(1), 0) * 60
+
+    # 十X分钟（十前面无数字）
+    m = re.search(r'十\s*([一二三四五六七八九])?\s*分钟', text)
+    if m:
+        return 10 + (_CN_NUM_MAP.get(m.group(1), 0) if m.group(1) else 0)
+
+    return None
+
 
 def _parse_time(text: str) -> str | None:
     """从文本中提取时间点，返回 ISO 字符串（北京时间 UTC+8）。
@@ -127,7 +194,11 @@ def _keyword_fallback(user_text: str):
         return {"record_type": "diaper", "parsed": parsed, "confidence": 0.9}
 
     # ========== 喂奶 ==========
-    feeding_kw = ['喂奶', '喝奶', '吃奶', '喂了', '喝了', '吃了', '母乳', '奶粉', '瓶喂', '左边', '右边', '左侧', '右侧', '亲喂', '吸奶', '哺乳']
+    feeding_kw = ['喂奶', '喝奶', '吃奶', '喂了', '喝了', '吃了', '母乳', '奶粉', '瓶喂',
+                  '左边', '右边', '左侧', '右侧', '亲喂', '吸奶', '哺乳', '吃完了', '喝完了',
+                  '泡奶粉', '冲奶粉', '冲奶', '泡奶', '喂完了', '喝饱了', '吃饱了',
+                  '饿了', '饿', '想吃', '想喝', '要喝', '要吃', '饿哭', '饿醒',
+                  '奶瓶', '吸出来', '挤奶', '存储奶', '冻奶', '温奶', '热奶']
     if any(kw in text for kw in feeding_kw):
         parsed = {}
 
@@ -144,9 +215,9 @@ def _keyword_fallback(user_text: str):
             parsed['side'] = 'bottle'
         # 否则不设置 side，由前端检测缺失并弹窗
 
-        dur_match = re.search(r'(\d+)\s*(分钟|分)', text)
+        cn_dur = _parse_cn_duration_minutes(text)
+        parsed['duration_minutes'] = cn_dur if cn_dur is not None else 0
         vol_match = re.search(r'(\d+)\s*(ml|毫升|oz)', text)
-        parsed['duration_minutes'] = int(dur_match.group(1)) if dur_match else 0
         parsed['amount_ml'] = int(vol_match.group(1)) if vol_match else 0
         if parsed['amount_ml'] == 0:
             vol_match2 = re.search(r'(\d{2,3})\s*(?!分|分钟)', text)
@@ -169,12 +240,13 @@ def _keyword_fallback(user_text: str):
         return {"record_type": "feeding", "parsed": parsed, "confidence": 0.9}
 
     # ========== 睡眠 ==========
-    sleep_kw = ['睡了', '睡觉', '小睡', '午睡', '打盹', 'nap']
+    sleep_kw = ['睡了', '睡觉', '小睡', '午睡', '打盹', 'nap', '睡着', '睡着了', '刚睡醒',
+                 '睡醒', '醒了', '眯了', '眯一会', '眯一下', '睡了一觉', '小憩', '瞌睡',
+                 '困了', '困', '想睡', '哄睡', '陪睡', '入睡', '深睡', '浅睡']
     if any(kw in text for kw in sleep_kw):
-        dur_match = re.search(r'(\d+)\s*(分钟|分|小时|h)', text)
-        duration = int(dur_match.group(1)) if dur_match else 0
-        if dur_match and ('小时' in text or 'h' in text):
-            duration = duration * 60 if duration else 0
+        duration = _parse_cn_duration_minutes(text)
+        if duration is None:
+            duration = 0
 
         parsed = {}
         if duration > 0:
