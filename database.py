@@ -24,6 +24,8 @@ def init_db():
             amount_ml INTEGER DEFAULT 0,
             note TEXT DEFAULT '',
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -37,6 +39,8 @@ def init_db():
             duration_minutes INTEGER DEFAULT 0,
             note TEXT DEFAULT '',
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -49,6 +53,8 @@ def init_db():
             time TEXT NOT NULL,
             note TEXT DEFAULT '',
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -63,6 +69,8 @@ def init_db():
             head_circumference_cm REAL,
             note TEXT DEFAULT '',
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -77,6 +85,8 @@ def init_db():
             actual_date TEXT DEFAULT '',
             note TEXT DEFAULT '',
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -93,6 +103,8 @@ def init_db():
             frequency TEXT DEFAULT '',
             note TEXT DEFAULT '',
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -108,7 +120,7 @@ def init_db():
         )
     """)
 
-    # 家庭表：一个家庭 = 一个宝宝
+    # 家庭表：一个家庭支持多宝宝
     conn.execute("""
         CREATE TABLE IF NOT EXISTS families (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,9 +129,25 @@ def init_db():
             baby_birthday TEXT DEFAULT '',
             baby_avatar TEXT DEFAULT '',
             created_by TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT '',
+            babies TEXT DEFAULT '[]',
+            permissions TEXT DEFAULT '{}'
         )
     """)
+
+    # 迁移：为旧表添加缺失字段
+    try:
+        conn.execute("ALTER TABLE families ADD COLUMN babies TEXT DEFAULT '[]'")
+    except:
+        pass
+    try:
+        conn.execute("ALTER TABLE families ADD COLUMN permissions TEXT DEFAULT '{}'")
+    except:
+        pass
+    try:
+        conn.execute("ALTER TABLE families ADD COLUMN created_at TEXT DEFAULT ''")
+    except:
+        pass
 
     # 家庭成员表：家庭与用户的关联
     conn.execute("""
@@ -142,9 +170,19 @@ def init_db():
             text TEXT NOT NULL,
             time TEXT NOT NULL,
             recorded_by TEXT DEFAULT '',
+            recorded_by_name TEXT DEFAULT '',
+            recorded_by_avatar TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
+
+    # 迁移：为旧记录表添加 recorded_by_name / recorded_by_avatar
+    for tbl in ['feeding', 'sleep', 'diaper', 'growth', 'vaccination', 'medication', 'notes']:
+        for col in ['recorded_by_name', 'recorded_by_avatar']:
+            try:
+                conn.execute("ALTER TABLE " + tbl + " ADD COLUMN " + col + " TEXT DEFAULT ''")
+            except:
+                pass
 
     # 索引
     conn.execute("CREATE INDEX IF NOT EXISTS idx_users_openid ON users(openid)")

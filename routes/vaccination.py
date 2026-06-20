@@ -48,6 +48,8 @@ def create_vaccination():
         "actual_date": data.get("actual_date", ""),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
+        "recorded_by_name": data.get("recorded_by_name", ""),
+        "recorded_by_avatar": data.get("recorded_by_avatar", ""),
         "created_at": datetime.now().isoformat(),
     }
 
@@ -56,11 +58,11 @@ def create_vaccination():
 
     db = get_db()
     db.execute(
-        "INSERT INTO vaccination (id,baby_id,family_id,vaccine_name,scheduled_date,status,actual_date,note,recorded_by,created_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO vaccination (id,baby_id,family_id,vaccine_name,scheduled_date,status,actual_date,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"], record["vaccine_name"],
          record["scheduled_date"], record["status"], record["actual_date"],
-         record["note"], record["recorded_by"], record["created_at"])
+         record["note"], record["recorded_by"], record["recorded_by_name"], record["recorded_by_avatar"], record["created_at"])
     )
     db.commit()
     db.close()

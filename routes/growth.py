@@ -52,16 +52,18 @@ def create_growth():
         "head_circumference_cm": data.get("head_circumference_cm"),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
+        "recorded_by_name": data.get("recorded_by_name", ""),
+        "recorded_by_avatar": data.get("recorded_by_avatar", ""),
         "created_at": datetime.now().isoformat(),
     }
 
     db = get_db()
     db.execute(
-        "INSERT INTO growth (id,baby_id,family_id,record_date,height_cm,weight_kg,head_circumference_cm,note,recorded_by,created_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO growth (id,baby_id,family_id,record_date,height_cm,weight_kg,head_circumference_cm,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"], record["record_date"],
          record["height_cm"], record["weight_kg"], record["head_circumference_cm"],
-         record["note"], record["recorded_by"], record["created_at"])
+         record["note"], record["recorded_by"], record["recorded_by_name"], record["recorded_by_avatar"], record["created_at"])
     )
     db.commit()
     db.close()

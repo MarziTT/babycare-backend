@@ -60,14 +60,16 @@ def create_sleep():
         "duration_minutes": data.get("duration_minutes", 0),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
+        "recorded_by_name": data.get("recorded_by_name", ""),
+        "recorded_by_avatar": data.get("recorded_by_avatar", ""),
         "created_at": datetime.now().isoformat(),
     }
 
     db.execute(
-        "INSERT INTO sleep (id,baby_id,family_id,start_time,end_time,duration_minutes,note,recorded_by,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO sleep (id,baby_id,family_id,start_time,end_time,duration_minutes,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"], record["start_time"],
          record["end_time"], record["duration_minutes"], record["note"],
-         record["recorded_by"], record["created_at"])
+         record["recorded_by"], record["recorded_by_name"], record["recorded_by_avatar"], record["created_at"])
     )
     db.commit()
     db.close()

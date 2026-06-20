@@ -43,6 +43,8 @@ def create_medication():
         "frequency": data.get("frequency", ""),
         "note": data.get("note", ""),
         "recorded_by": data.get("recorded_by", ""),
+        "recorded_by_name": data.get("recorded_by_name", ""),
+        "recorded_by_avatar": data.get("recorded_by_avatar", ""),
         "created_at": datetime.now().isoformat(),
     }
 
@@ -51,11 +53,12 @@ def create_medication():
 
     db = get_db()
     db.execute(
-        "INSERT INTO medication (id,baby_id,family_id,medicine_name,dosage,unit,start_time,end_time,frequency,note,recorded_by,created_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO medication (id,baby_id,family_id,medicine_name,dosage,unit,start_time,end_time,frequency,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"], record["medicine_name"],
          record["dosage"], record["unit"], record["start_time"], record["end_time"],
-         record["frequency"], record["note"], record["recorded_by"], record["created_at"])
+         record["frequency"], record["note"], record["recorded_by"],
+         record["recorded_by_name"], record["recorded_by_avatar"], record["created_at"])
     )
     db.commit()
     db.close()

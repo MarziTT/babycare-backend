@@ -1,6 +1,7 @@
 """BabyCare 育儿助手 - Flask 主入口 (v1.1)"""
 import logging
-from flask import Flask, jsonify
+import os
+from flask import Flask, jsonify, send_from_directory
 from config import Config
 
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +39,12 @@ def create_app():
     app.register_blueprint(notes_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(family_bp)
+
+    # 静态文件服务（头像等上传文件）
+    @app.route('/static/<path:filename>')
+    def static_files(filename):
+        static_dir = os.path.join(os.path.dirname(__file__), 'static')
+        return send_from_directory(static_dir, filename)
 
     # 健康检查
     @app.route("/api/health")

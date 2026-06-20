@@ -38,6 +38,8 @@ def create_note():
         "text": data.get("text", ""),
         "time": data.get("time", datetime.now().isoformat()),
         "recorded_by": data.get("recorded_by", ""),
+        "recorded_by_name": data.get("recorded_by_name", ""),
+        "recorded_by_avatar": data.get("recorded_by_avatar", ""),
         "created_at": datetime.now().isoformat(),
     }
 
@@ -46,10 +48,11 @@ def create_note():
 
     db = get_db()
     db.execute(
-        "INSERT INTO notes (id,baby_id,family_id,text,time,recorded_by,created_at) "
-        "VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO notes (id,baby_id,family_id,text,time,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
         (record["id"], record["baby_id"], record["family_id"],
          record["text"], record["time"], record["recorded_by"],
+         record["recorded_by_name"], record["recorded_by_avatar"],
          record["created_at"])
     )
     db.commit()
