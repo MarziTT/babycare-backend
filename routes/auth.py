@@ -1,9 +1,11 @@
 """微信登录接口"""
+import logging
 from flask import Blueprint, request, jsonify
 import httpx
 from database import get_db
 from config import Config
 
+logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 
 
@@ -18,7 +20,7 @@ def login():
     if not code:
         return jsonify({'code': 400, 'message': '缺少登录凭证'}), 400
 
-    # 调用微信 code2session
+    # 调用微信 code2session（timeout 5 秒，iOS 端总超时通常 ~10s，留一半给数据库和网络往返）
     wx_url = 'https://api.weixin.qq.com/sns/jscode2session'
     params = {
         'appid': Config.WX_APPID,
@@ -26,12 +28,27 @@ def login():
         'js_code': code,
         'grant_type': 'authorization_code'
     }
-    resp = httpx.get(wx_url, params=params, timeout=10)
-    wx_data = resp.json()
+    try:
+        resp = httpx.get(wx_url, params=params, timeout=5.0)
+        resp.raise_for_status()
+        wx_data = resp.json()
+    except httpx.TimeoutException:
+        logger.warning("微信 code2session 超时 (5s)")
+        return jsonify({'code': 503, 'message': '微信服务响应超时，请重试'}), 503
+    except httpx.HTTPStatusError as e:
+        logger.error(f"微信 code2session HTTP 错误: {e.response.status_code}")
+        return jsonify({'code': 502, 'message': '微信服务异常，请稍后重试'}), 502
+    except Exception as e:
+        logger.error(f"微信 code2session 调用失败: {e}")
+        return jsonify({'code': 502, 'message': '微信服务不可达，请稍后重试'}), 502
 
     openid = wx_data.get('openid')
     if not openid:
-        return jsonify({'code': 401, 'message': '微信登录失败: ' + wx_data.get('errmsg', '')}), 401
+        errmsg = wx_data.get('errmsg', '')
+        logger.warning(f"微信返回错误: errcode={wx_data.get('errcode')}, errmsg={errmsg}")
+        return jsonify({'code': 401, 'message': '微信登录失败: ' + errmsg}), 401
+
+    logger.info(f"用户登录: openid={openid}")
 
     db = get_db()
     # 查找或创建用户
@@ -43,6 +60,7 @@ def login():
         )
         db.commit()
         user = db.execute('SELECT * FROM users WHERE openid = ?', (openid,)).fetchone()
+        logger.info(f"新用户注册: openid={openid}")
 
     # 查询该用户所在的家庭
     family = db.execute('''
