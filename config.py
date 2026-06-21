@@ -27,3 +27,6 @@ class Config:
 
     # 请求限制
     RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "60"))  # 每分钟
+
+    # 管理后台
+    ADMIN_KEY = os.environ.get("ADMIN_KEY", "babycare-admin-2026")

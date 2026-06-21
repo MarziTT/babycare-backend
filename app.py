@@ -2,6 +2,7 @@
 import logging
 import os
 from flask import Flask, jsonify, send_from_directory
+from flask_cors import CORS
 from config import Config
 
 logging.basicConfig(level=logging.INFO)
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    CORS(app)
 
     # 初始化 SQLite 数据库
     import database  # noqa: F401 - 模块加载时自动建表
@@ -27,6 +29,7 @@ def create_app():
     from routes.note import notes_bp
     from routes.auth import auth_bp
     from routes.family import family_bp
+    from routes.admin import admin_bp
 
     app.register_blueprint(feeding_bp)
     app.register_blueprint(sleep_bp)
@@ -39,6 +42,7 @@ def create_app():
     app.register_blueprint(notes_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(family_bp)
+    app.register_blueprint(admin_bp)
 
     # 静态文件服务（头像等上传文件）
     @app.route('/static/<path:filename>')

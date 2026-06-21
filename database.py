@@ -176,6 +176,12 @@ def init_db():
         )
     """)
 
+    # 迁移：为 users 表添加 status 字段
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'")
+    except:
+        pass
+
     # 迁移：为旧记录表添加 recorded_by_name / recorded_by_avatar
     for tbl in ['feeding', 'sleep', 'diaper', 'growth', 'vaccination', 'medication', 'notes']:
         for col in ['recorded_by_name', 'recorded_by_avatar']:
