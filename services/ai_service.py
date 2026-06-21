@@ -156,7 +156,21 @@ def call_llm(messages: list, temperature: float = 0.3) -> str:
 
 
 def transcribe_audio(audio_base64: str, audio_format: str = "mp3") -> str:
-    """语音转文字"""
+    """语音转文字
+
+    WARNING: 此实现为占位代码，不工作。
+    腾讯云 ASR 需要 TC3-HMAC-SHA256 签名（SecretId + SecretKey），
+    不能直接用 Bearer token POST asr.tencentcloudapi.com。
+    ASR_API_KEY 当前为占位值 'tencent-asr-demo'。
+
+    前端已改用微信同声传译插件 (WechatSI) 做本地语音识别，
+    走 smartChat 解析意图，不再依赖此后端 ASR。
+
+    此函数仅保留作为降级路径，接入真实 ASR 需：
+    1. 配置真实的 SecretId / SecretKey
+    2. 实现 TC3-HMAC-SHA256 签名
+    3. 正确设置 X-TC-Action / X-TC-Version / X-TC-Timestamp 头
+    """
     with httpx.Client(timeout=15) as client:
         resp = client.post(
             "https://asr.tencentcloudapi.com/",
