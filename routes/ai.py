@@ -37,11 +37,26 @@ def voice_to_record():
     except Exception as e:
         return jsonify({"code": 500, "message": f"语音识别失败: {str(e)}"}), 500
 
+    type_names = {
+        "feeding": "喂奶", "sleep": "睡眠", "diaper": "尿布",
+        "growth": "成长", "medication": "用药", "vaccination": "疫苗", "note": "随手记",
+    }
+
     if text:
         result = parse_voice_input(text)
-        result["raw_text"] = text
+        result["text"] = text  # 前端期望的字段名（兼容 raw_text）
+        result["intent"] = "record" if result.get("record_type") != "unknown" else "chat"
+        tn = type_names.get(result.get("record_type"), "记录")
+        result["reply"] = f"已识别：{tn}记录，确认保存吗？"
     else:
-        result = {"record_type": "unknown", "parsed": {}, "confidence": 0, "raw_text": text}
+        result = {
+            "record_type": "unknown",
+            "parsed": {},
+            "confidence": 0,
+            "text": text,
+            "intent": "chat",
+            "reply": "没听清，再说一次吧～",
+        }
 
     return jsonify({"code": 0, "data": result, "message": "ok"})
 
