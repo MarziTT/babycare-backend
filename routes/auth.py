@@ -61,6 +61,15 @@ def login():
         db.commit()
         user = db.execute('SELECT * FROM users WHERE openid = ?', (openid,)).fetchone()
         logger.info(f"新用户注册: openid={openid}")
+    else:
+        # 已存在用户也更新昵称和头像（用户可能在微信中修改了）
+        if nickname or avatar_url:
+            db.execute(
+                'UPDATE users SET nickname = ?, avatar_url = ? WHERE openid = ?',
+                (nickname, avatar_url, openid)
+            )
+            db.commit()
+        logger.info(f"用户已存在，更新信息: openid={openid}")
 
     # 查询该用户所在的家庭
     family = db.execute('''

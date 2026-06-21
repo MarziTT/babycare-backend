@@ -73,11 +73,14 @@ def create_family():
         'gender': baby_gender,
         'avatar': baby_avatar
     }]
+
+    # 从 users 表读取创建者的微信昵称和头像
+    creator = db.execute('SELECT nickname, avatar_url FROM users WHERE openid = ?', (openid,)).fetchone()
     permissions = {
         openid: {
             'role': role,
-            'nickname': '',
-            'avatar_url': ''
+            'nickname': creator['nickname'] if creator else '',
+            'avatar_url': creator['avatar_url'] if creator else ''
         }
     }
 
@@ -438,10 +441,19 @@ def update_permissions():
         perms[target_openid] = {'role': 'editor', 'nickname': '', 'avatar_url': ''}
 
     if role:
-        if role not in ('admin', 'editor', 'viewer'):
+        VALID_ROLES = ('admin', 'editor', 'viewer', 'mom', 'dad', 'grandma', 'grandpa', 'other')
+        FAMILY_ROLES = ('mom', 'dad', 'grandma', 'grandpa', 'other')
+        if role not in VALID_ROLES:
             db.close()
             return jsonify({'code': 400, 'message': '无效的角色: ' + role}), 400
         perms[target_openid]['role'] = role
+        # 仅当角色是家庭关系角色时，同步更新 family_members 表
+        # 权限角色（admin/editor/viewer）只存在 permissions JSON 中，不覆盖家庭关系
+        if role in FAMILY_ROLES:
+            db.execute(
+                'UPDATE family_members SET role = ? WHERE family_id = ? AND openid = ?',
+                (role, family_id, target_openid)
+            )
     if nickname is not None:
         perms[target_openid]['nickname'] = nickname
     if avatar_url is not None:
@@ -475,8 +487,9 @@ def upload_avatar():
     filepath = os.path.join(UPLOAD_DIR, filename)
     file.save(filepath)
 
-    # 返回相对路径作为 URL
-    url = '/static/uploads/' + filename
+    # 返回完整 URL（小程序 image 组件需要完整路径才能跨域加载）
+    base_url = request.host_url.rstrip('/')
+    url = base_url + '/static/uploads/' + filename
     return jsonify({'code': 0, 'data': {'url': url}, 'message': '上传成功'})
 
 
