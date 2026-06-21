@@ -41,6 +41,11 @@ def create_diaper():
 
     db = get_db()
 
+    # 校验：必须已创建家庭
+    if not data.get("family_id", ""):
+        db.close()
+        return jsonify({"code": 400, "message": "请先创建家庭信息"}), 400
+
     # 校验：记录时间不能是未来
     if time_val:
         t = datetime.fromisoformat(time_val).replace(tzinfo=CST)

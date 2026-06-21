@@ -58,6 +58,10 @@ def create_vaccination():
     if not record["vaccine_name"] or not record["scheduled_date"]:
         return jsonify({"code": 400, "message": "疫苗名称和计划日期不能为空"}), 400
 
+    # 校验：必须已创建家庭
+    if not record["family_id"]:
+        return jsonify({"code": 400, "message": "请先创建家庭信息"}), 400
+
     db = get_db()
     db.execute(
         "INSERT INTO vaccination (id,baby_id,family_id,vaccine_name,scheduled_date,status,actual_date,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "

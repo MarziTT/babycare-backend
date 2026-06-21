@@ -59,6 +59,10 @@ def create_growth():
         "created_at": datetime.now(CST).isoformat(),
     }
 
+    # 校验：必须已创建家庭
+    if not record["family_id"]:
+        return jsonify({"code": 400, "message": "请先创建家庭信息"}), 400
+
     # 校验：记录日期不能是未来
     if record["record_date"]:
         rd = datetime.strptime(record["record_date"], "%Y-%m-%d").replace(tzinfo=CST)

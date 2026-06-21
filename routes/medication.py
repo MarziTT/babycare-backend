@@ -53,6 +53,10 @@ def create_medication():
     if not record["medicine_name"]:
         return jsonify({"code": 400, "message": "药品名称不能为空"}), 400
 
+    # 校验：必须已创建家庭
+    if not record["family_id"]:
+        return jsonify({"code": 400, "message": "请先创建家庭信息"}), 400
+
     # 校验：开始时间和结束时间均不能超过当前时间
     now_cst = datetime.now(CST)
     st = record["start_time"]
