@@ -41,14 +41,17 @@ def create_sleep():
 
     db = get_db()
 
-    # 校验：开始时间不能晚于结束时间
+    # 校验：开始时间不能晚于结束时间，结束时间不能是未来
     if end_time and start_time:
         st = datetime.fromisoformat(start_time)
         et = datetime.fromisoformat(end_time)
+        now_cst = datetime.now(CST)
+        st = st.replace(tzinfo=CST)
+        et = et.replace(tzinfo=CST)
         if st >= et:
             db.close()
             return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"})
-        if et > datetime.now(CST):
+        if et > now_cst:
             db.close()
             return jsonify({"code": 400, "message": "结束时间不能是未来时间"})
 

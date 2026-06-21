@@ -62,10 +62,14 @@ def create_feeding():
     if end_time and start_time:
         st = datetime.fromisoformat(start_time)
         et = datetime.fromisoformat(end_time)
+        now_cst = datetime.now(CST)
+        # 前端传来的时间不带时区，需转换为 CST 后再比较
+        st = st.replace(tzinfo=CST)
+        et = et.replace(tzinfo=CST)
         if st >= et:
             db.close()
             return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"})
-        if et > datetime.now(CST):
+        if et > now_cst:
             db.close()
             return jsonify({"code": 400, "message": "结束时间不能是未来时间"})
 
