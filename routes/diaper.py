@@ -41,8 +41,8 @@ def create_diaper():
 
     db = get_db()
 
-    # 校验：必须已创建家庭
-    if not data.get("family_id", ""):
+    # 校验：必须已创建家庭（strip 防止空白字符绕过）
+    if not (data.get("family_id") or "").strip():
         db.close()
         return jsonify({"code": 400, "message": "请先创建家庭信息"}), 400
 

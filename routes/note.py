@@ -48,8 +48,8 @@ def create_note():
     if not record["text"]:
         return jsonify({"code": 400, "message": "内容不能为空"}), 400
 
-    # 校验：必须已创建家庭
-    if not record["family_id"]:
+    # 校验：必须已创建家庭（strip 防止空白字符绕过）
+    if not (record.get("family_id") or "").strip():
         return jsonify({"code": 400, "message": "请先创建家庭信息"}), 400
 
     # 校验：记录时间不能是未来
