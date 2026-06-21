@@ -18,9 +18,10 @@ class Config:
     AI_API_BASE = os.environ.get("AI_API_BASE") or "https://ai.laodog.top/v1"
     AI_MODEL = os.environ.get("AI_MODEL") or "gpt-5.4-mini"
 
-    # ASR 语音识别
-    ASR_API_KEY = os.environ.get("ASR_API_KEY") or "tencent-asr-demo"
-    ASR_PROVIDER = os.environ.get("ASR_PROVIDER") or "tencent"  # tencent / iflytek
+    # ASR 语音识别（腾讯云一句话识别 SentenceRecognition）
+    # 申请地址：https://console.cloud.tencent.com/cam/capi
+    TENCENT_SECRET_ID = os.environ.get("TENCENT_SECRET_ID", "")
+    TENCENT_SECRET_KEY = os.environ.get("TENCENT_SECRET_KEY", "")
 
     # 缓存
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

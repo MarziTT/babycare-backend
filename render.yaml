@@ -13,7 +13,9 @@ services:
         value: https://api.deepseek.com/v1
       - key: AI_MODEL
         value: deepseek-chat
-      - key: ASR_API_KEY
-        value: tencent-asr-demo
-      - key: ASR_PROVIDER
-        value: tencent
+      # 腾讯云 ASR 密钥 — 请替换为真实值
+      # 申请地址：https://console.cloud.tencent.com/cam/capi
+      - key: TENCENT_SECRET_ID
+        value: your-secret-id-here
+      - key: TENCENT_SECRET_KEY
+        value: your-secret-key-here

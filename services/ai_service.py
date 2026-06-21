@@ -1,6 +1,10 @@
 """AI 服务封装 - LLM 调用、意图解析、语音转文字（同步版本）"""
+import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
 import re
 from datetime import datetime, timedelta, timezone
 import httpx
@@ -156,30 +160,113 @@ def call_llm(messages: list, temperature: float = 0.3) -> str:
 
 
 def transcribe_audio(audio_base64: str, audio_format: str = "mp3") -> str:
-    """语音转文字
+    """语音转文字 — 腾讯云 ASR 一句话识别（SentenceRecognition）
 
-    WARNING: 此实现为占位代码，不工作。
-    腾讯云 ASR 需要 TC3-HMAC-SHA256 签名（SecretId + SecretKey），
-    不能直接用 Bearer token POST asr.tencentcloudapi.com。
-    ASR_API_KEY 当前为占位值 'tencent-asr-demo'。
+    使用 TC3-HMAC-SHA256 签名鉴权，需要环境变量：
+      TENCENT_SECRET_ID  — 腾讯云 API 密钥 ID
+      TENCENT_SECRET_KEY — 腾讯云 API 密钥 Key
 
-    前端已改用微信同声传译插件 (WechatSI) 做本地语音识别，
-    走 smartChat 解析意图，不再依赖此后端 ASR。
-
-    此函数仅保留作为降级路径，接入真实 ASR 需：
-    1. 配置真实的 SecretId / SecretKey
-    2. 实现 TC3-HMAC-SHA256 签名
-    3. 正确设置 X-TC-Action / X-TC-Version / X-TC-Timestamp 头
+    申请地址：https://console.cloud.tencent.com/cam/capi
     """
+    secret_id = Config.TENCENT_SECRET_ID
+    secret_key = Config.TENCENT_SECRET_KEY
+
+    if not secret_id or not secret_key:
+        raise RuntimeError("语音识别服务未配置，请联系管理员")
+
+    # 解码 base64 获取原始音频长度
+    raw_audio = base64.b64decode(audio_base64)
+    data_len = len(raw_audio)
+
+    service = "asr"
+    host = "asr.tencentcloudapi.com"
+    endpoint = f"https://{host}"
+    action = "SentenceRecognition"
+    version = "2019-06-14"
+    region = "ap-guangzhou"
+    algorithm = "TC3-HMAC-SHA256"
+
+    # 请求体
+    payload = json.dumps({
+        "EngSerViceType": "16k_zh",
+        "SourceType": 1,
+        "VoiceFormat": audio_format,
+        "Data": audio_base64,
+        "DataLen": data_len,
+    })
+
+    # --- TC3-HMAC-SHA256 签名 ---
+    now = datetime.now(timezone.utc)
+    timestamp = int(now.timestamp())
+    date_str = now.strftime("%Y-%m-%d")
+
+    # 1. 构造规范请求串
+    http_method = "POST"
+    canonical_uri = "/"
+    canonical_querystring = ""
+    ct = "application/json; charset=utf-8"
+    canonical_headers = f"content-type:{ct}\nhost:{host}\nx-tc-action:{action.lower()}\n"
+    signed_headers = "content-type;host;x-tc-action"
+    hashed_payload = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    canonical_request = (
+        f"{http_method}\n"
+        f"{canonical_uri}\n"
+        f"{canonical_querystring}\n"
+        f"{canonical_headers}\n"
+        f"{signed_headers}\n"
+        f"{hashed_payload}"
+    )
+
+    # 2. 构造待签名字符串
+    credential_scope = f"{date_str}/{service}/tc3_request"
+    hashed_canonical_request = hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
+    string_to_sign = (
+        f"{algorithm}\n"
+        f"{timestamp}\n"
+        f"{credential_scope}\n"
+        f"{hashed_canonical_request}"
+    )
+
+    # 3. 计算签名
+    def _hmac_sign(key: bytes, msg: str) -> bytes:
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    secret_date = _hmac_sign(("TC3" + secret_key).encode("utf-8"), date_str)
+    secret_service = _hmac_sign(secret_date, service)
+    secret_signing = _hmac_sign(secret_service, "tc3_request")
+    signature = hmac.new(secret_signing, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    # 4. 构造 Authorization
+    authorization = (
+        f"{algorithm} Credential={secret_id}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    # 发送请求
+    headers = {
+        "Authorization": authorization,
+        "Content-Type": ct,
+        "Host": host,
+        "X-TC-Action": action,
+        "X-TC-Version": version,
+        "X-TC-Timestamp": str(timestamp),
+        "X-TC-Region": region,
+    }
+
     with httpx.Client(timeout=15) as client:
-        resp = client.post(
-            "https://asr.tencentcloudapi.com/",
-            headers={"Authorization": f"Bearer {Config.ASR_API_KEY}"},
-            json={"audio": audio_base64, "format": audio_format},
-        )
+        resp = client.post(endpoint, headers=headers, content=payload)
         resp.raise_for_status()
         data = resp.json()
-        return data.get("text", "")
+
+    # 检查业务错误
+    response = data.get("Response", {})
+    if "Error" in response:
+        err = response["Error"]
+        logger.error(f"ASR error: {err.get('Code')} - {err.get('Message')}")
+        raise RuntimeError(f"语音识别失败: {err.get('Message', '未知错误')}")
+
+    return response.get("Result", "")
 
 
 def _keyword_fallback(user_text: str):
