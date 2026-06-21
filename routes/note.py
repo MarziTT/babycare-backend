@@ -48,6 +48,12 @@ def create_note():
     if not record["text"]:
         return jsonify({"code": 400, "message": "内容不能为空"}), 400
 
+    # 校验：记录时间不能是未来
+    if record["time"]:
+        t = datetime.fromisoformat(record["time"]).replace(tzinfo=CST)
+        if t > datetime.now(CST):
+            return jsonify({"code": 400, "message": "记录时间不能是未来时间"}), 400
+
     db = get_db()
     db.execute(
         "INSERT INTO notes (id,baby_id,family_id,text,time,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "

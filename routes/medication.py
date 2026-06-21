@@ -53,6 +53,24 @@ def create_medication():
     if not record["medicine_name"]:
         return jsonify({"code": 400, "message": "药品名称不能为空"}), 400
 
+    # 校验：开始时间和结束时间均不能超过当前时间
+    now_cst = datetime.now(CST)
+    st = record["start_time"]
+    et = record["end_time"]
+    if st:
+        t = datetime.fromisoformat(st).replace(tzinfo=CST)
+        if t > now_cst:
+            return jsonify({"code": 400, "message": "开始时间不能是未来时间"}), 400
+    if et:
+        t = datetime.fromisoformat(et).replace(tzinfo=CST)
+        if t > now_cst:
+            return jsonify({"code": 400, "message": "结束时间不能是未来时间"}), 400
+    if st and et:
+        st_dt = datetime.fromisoformat(st).replace(tzinfo=CST)
+        et_dt = datetime.fromisoformat(et).replace(tzinfo=CST)
+        if st_dt >= et_dt:
+            return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"}), 400
+
     db = get_db()
     db.execute(
         "INSERT INTO medication (id,baby_id,family_id,medicine_name,dosage,unit,start_time,end_time,frequency,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "

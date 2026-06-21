@@ -59,6 +59,12 @@ def create_growth():
         "created_at": datetime.now(CST).isoformat(),
     }
 
+    # 校验：记录日期不能是未来
+    if record["record_date"]:
+        rd = datetime.strptime(record["record_date"], "%Y-%m-%d").replace(tzinfo=CST)
+        if rd > datetime.now(CST):
+            return jsonify({"code": 400, "message": "记录日期不能是未来日期"}), 400
+
     db = get_db()
     db.execute(
         "INSERT INTO growth (id,baby_id,family_id,record_date,height_cm,weight_kg,head_circumference_cm,note,recorded_by,recorded_by_name,recorded_by_avatar,created_at) "

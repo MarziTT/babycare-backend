@@ -41,19 +41,24 @@ def create_sleep():
 
     db = get_db()
 
-    # 校验：开始时间不能晚于结束时间，结束时间不能是未来
-    if end_time and start_time:
-        st = datetime.fromisoformat(start_time)
-        et = datetime.fromisoformat(end_time)
-        now_cst = datetime.now(CST)
-        st = st.replace(tzinfo=CST)
-        et = et.replace(tzinfo=CST)
-        if st >= et:
+    # 校验：开始时间和结束时间均不能超过当前时间
+    now_cst = datetime.now(CST)
+    st = None
+    et = None
+    if start_time:
+        st = datetime.fromisoformat(start_time).replace(tzinfo=CST)
+        if st > now_cst:
             db.close()
-            return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"})
+            return jsonify({"code": 400, "message": "开始时间不能是未来时间"}), 400
+    if end_time:
+        et = datetime.fromisoformat(end_time).replace(tzinfo=CST)
         if et > now_cst:
             db.close()
-            return jsonify({"code": 400, "message": "结束时间不能是未来时间"})
+            return jsonify({"code": 400, "message": "结束时间不能是未来时间"}), 400
+    # 校验：开始时间不能晚于结束时间
+    if st and et and st >= et:
+        db.close()
+        return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"}), 400
 
     # 去重：同一 start_time 精确匹配（时间戳误差 3 秒内），防双击重复提交
     today = datetime.now(CST).strftime("%Y-%m-%d")

@@ -41,6 +41,13 @@ def create_diaper():
 
     db = get_db()
 
+    # 校验：记录时间不能是未来
+    if time_val:
+        t = datetime.fromisoformat(time_val).replace(tzinfo=CST)
+        if t > datetime.now(CST):
+            db.close()
+            return jsonify({"code": 400, "message": "记录时间不能是未来时间"}), 400
+
     # 去重：查询今天同 baby_id、同 diaper_type、time 在 5 分钟内的记录
     today = datetime.now(CST).strftime("%Y-%m-%d")
     dup_rows = db.execute(

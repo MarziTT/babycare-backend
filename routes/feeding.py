@@ -58,20 +58,24 @@ def create_feeding():
 
     db = get_db()
 
-    # 校验：开始时间不能晚于结束时间，结束时间不能是未来
-    if end_time and start_time:
-        st = datetime.fromisoformat(start_time)
-        et = datetime.fromisoformat(end_time)
-        now_cst = datetime.now(CST)
-        # 前端传来的时间不带时区，需转换为 CST 后再比较
-        st = st.replace(tzinfo=CST)
-        et = et.replace(tzinfo=CST)
-        if st >= et:
+    # 校验：开始时间和结束时间均不能超过当前时间
+    now_cst = datetime.now(CST)
+    st = None
+    et = None
+    if start_time:
+        st = datetime.fromisoformat(start_time).replace(tzinfo=CST)
+        if st > now_cst:
             db.close()
-            return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"})
+            return jsonify({"code": 400, "message": "开始时间不能是未来时间"}), 400
+    if end_time:
+        et = datetime.fromisoformat(end_time).replace(tzinfo=CST)
         if et > now_cst:
             db.close()
-            return jsonify({"code": 400, "message": "结束时间不能是未来时间"})
+            return jsonify({"code": 400, "message": "结束时间不能是未来时间"}), 400
+    # 校验：开始时间不能晚于结束时间
+    if st and et and st >= et:
+        db.close()
+        return jsonify({"code": 400, "message": "开始时间不能晚于结束时间"}), 400
 
     # 去重：查询今天同 baby_id、同 feed_type、start_time 在 5 分钟内的记录
     today = datetime.now(CST).strftime("%Y-%m-%d")
